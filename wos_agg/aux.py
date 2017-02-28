@@ -31,19 +31,29 @@ def is_article(x):
 
 def soft_filter_year(refs, year, delta=None, filter_wos=True):
     """
-    filter_wos ? then check startstwith
+
+    :param refs: list of references
+    :param year: int, current year
+    :param delta: int, length of lookback window
+    :param filter_wos: bool
+    :return:
     """
+    if refs:
+        filtered = refs
+        if filter_wos:
+            filtered = filter(lambda x: not filter_wos or x['uid'].startswith('WOS:'), refs)
+        # keep the ref if 'year is not available
+        # or if delta is not provided or if it is provided
+        # and year is greater then current year - delta
+        filtered = filter(lambda x: ('year' not in x.keys() or not delta or x['year'] > year - delta - 1), filtered)
+        # only keep uids
+        filtered = map(lambda x: x['uid'], filtered)
+    else:
+        filtered = []
+    return filtered
 
-    f1 = filter(lambda x: not filter_wos or x['uid'].startswith('WOS:'), refs)
-    # keep the ref if 'year is not available
-    # or if delta is not provided or if it is provided
-    # and year is greater then current year - delta
-    f2 = filter(lambda x: ('year' not in x.keys() or not delta or x['year'] > year - delta - 1), f1)
-    f3 = map(lambda x: x['uid'], f2)
-    return f3
 
-
-def pdata2citations(pdata, delta=None, keep_issn=True):
+def pdata2citations(pdata, delta=None, keep_issn=True, filter_wos=True):
     """
     pdata : list of publication info dicts
     returns cdata: list of citation data tuples
@@ -52,7 +62,10 @@ def pdata2citations(pdata, delta=None, keep_issn=True):
     pdata_journals = filter(is_article, pdata)
     cdata = []
     for p in pdata_journals:
-        refs = list(soft_filter_year(p['references'], p['date']['year'], delta, True))
+        refs_ = p['references']
+        if refs_ is None:
+            refs_ = []
+        refs = list(soft_filter_year(refs_, p['date']['year'], delta, filter_wos))
         if keep_issn:
             item = p['id'], p['properties']['issn'], refs
         else:
@@ -60,3 +73,11 @@ def pdata2citations(pdata, delta=None, keep_issn=True):
         if refs:
             cdata.append(item)
     return cdata
+
+
+def pub2article_journal(pdata):
+
+    pdata_journals = filter(is_article, pdata)
+    aj_data = list(map(lambda x: (x['id'], x['properties']['issn_int']),
+                  pdata_journals))
+    return aj_data
