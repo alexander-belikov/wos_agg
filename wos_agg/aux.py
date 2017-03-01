@@ -67,7 +67,7 @@ def pdata2citations(pdata, delta=None, keep_issn=True, filter_wos=True):
             refs_ = []
         refs = list(soft_filter_year(refs_, p['date']['year'], delta, filter_wos))
         if keep_issn:
-            item = p['id'], p['properties']['issn'], refs
+            item = p['id'], p['properties']['issn_int'], refs
         else:
             item = p['id'], refs
         if refs:
@@ -79,5 +79,5 @@ def pub2article_journal(pdata):
 
     pdata_journals = filter(is_article, pdata)
     aj_data = list(map(lambda x: (x['id'], x['properties']['issn_int']),
-                  pdata_journals))
+                   pdata_journals))
     return aj_data
