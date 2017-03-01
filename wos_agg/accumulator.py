@@ -1,5 +1,7 @@
-from networkx import Graph
-from graph_tools.reduce import reduce_bigraphs, update_edges
+from numpy import nan
+from pandas import DataFrame
+from networkx import Graph, to_pandas_dataframe
+from graph_tools.reduce import reduce_bigraphs, update_edges, describe_graph
 
 id_type = 'id'
 prop_type = 'prop'
@@ -54,6 +56,9 @@ class Accumulator(object):
             self.g_prop_to_id.add_edge((prop_type, prop_),
                                        (id_type, id_), {'weight': 1.0})
 
+        # print('in process_id_prop_list() : g_prop_to_id composition')
+        # print(describe_graph(self.g_prop_to_id))
+
     def process_id_ids_list(self, in_list):
         """
 
@@ -65,16 +70,9 @@ class Accumulator(object):
         thus all ids from in_list should already be processed
         by process_id_prop_list
         """
-        # ids_all = list(map(lambda x: x[0], in_list))
-        # for _, sublist in in_list:
-        #     ids_all.extend(sublist)
-        #
-        # # ids incoming type is str : update the maps
-        # # at the same time, we should already have them before
-        # if self.type_str['ids']:
-        #     self.update_maps(ids_all, 'ids')
 
         in2 = filter(lambda x: x[0] in self.sets[id_type], in_list)
+
         in3 = map(lambda x: (x[0], list(filter(lambda y: y in self.sets[id_type],
                                                x[1]))), in2)
         in4 = filter(lambda x: x[1], in3)
@@ -90,16 +88,27 @@ class Accumulator(object):
             for item_ in refs_:
                 g_refs.add_edge((id_type+'_A', id_), (id_type, item_), {'weight': 1.0})
 
+        # print('in process_id_prop_list() : g_refs composition')
+        # print(describe_graph(g_refs))
 
         # g_prop_to_id : self.type[0]//id, self.type[1]//prop
-
+        # A -> B (A cites B)
+        # j -> id; id_A -> id :  j_B -> id(A)
         prop_b_to_id_a = reduce_bigraphs(self.g_prop_to_id, g_refs,
                                          (prop_type + '_B', id_type))
+
+        # print('in process_id_prop_list() : prop_b_to_id_a composition')
+        # print(describe_graph(prop_b_to_id_a))
+
+        # j -> id; j_B -> id :  j_A -> j_B
         prop_a_to_prop_b = reduce_bigraphs(self.g_prop_to_id, prop_b_to_id_a,
                                            (prop_type + '_A', prop_type + '_B'))
 
-        print('{0} nodes, {1} edges in prop_to_prop'.format(len(prop_a_to_prop_b.nodes()),
-                                                            len(prop_a_to_prop_b.edges())))
+        # print('in process_id_prop_list() : prop_a_to_prop_b composition')
+        # print(describe_graph(prop_a_to_prop_b))
+
+        # print('{0} nodes, {1} edges in prop_to_prop'.format(len(prop_a_to_prop_b.nodes()),
+        #                                                     len(prop_a_to_prop_b.edges())))
 
         update_edges(self.g_prop_to_prop, prop_a_to_prop_b)
 
@@ -116,6 +125,20 @@ class Accumulator(object):
                 self.int_to_str_maps[key].update(int_to_str_outstanding)
                 self.str_to_int_maps[key].update(str_to_int_outstanding)
 
+    def g_props_to_df(self):
+        df = to_pandas_dataframe(self.g_prop_to_prop).sort_index()
+        df = df.reindex_axis(sorted(df.columns), axis=1)
+        index_ = list(filter(lambda x: x[0] == prop_type + '_A', df.index))
+        columns_ = list(filter(lambda x: x[0] == prop_type + '_B', df.columns))
+        df = df.loc[list(index_), list(columns_)]
+        df.rename(index=lambda x: x[1], columns=lambda x: x[1], inplace=True)
+
+        sorted_props = sorted(list(set(df.index).union(set(df.columns))))
+        df_tot = DataFrame(nan, columns=sorted_props, index=sorted_props)
+        df_tot.update(df)
+        df = df_tot.fillna(0.)
+        return df
+
     def info(self):
         print('{0} elements in ids set'.format(len(self.sets[id_type])))
         print('{0} elements in props set'.format(len(self.sets[prop_type])))
@@ -125,3 +148,4 @@ class Accumulator(object):
                                                           len(self.g_prop_to_id.edges())))
         print('{0} nodes, {1} edges in prop_to_prop'.format(len(self.g_prop_to_prop.nodes()),
                                                             len(self.g_prop_to_prop.edges())))
+
