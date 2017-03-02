@@ -2,7 +2,18 @@ from os import listdir
 from os.path import isfile, join
 import gzip
 import pickle
+import logging
+import gzip
+from shutil import copyfileobj
+from os import listdir
+from os.path import isfile, join
+from .chunkreader import ChunkReader
 
+log_levels = {
+    "DEBUG": logging.DEBUG, "INFO": logging.INFO,
+    "WARNING": logging.WARNING, "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL
+    }
 
 def fetch_accumulator(fpath, prefix, suffix):
     """
@@ -15,7 +26,7 @@ def fetch_accumulator(fpath, prefix, suffix):
     prefix_len = len(prefix)
     suffix_len = len(suffix)
     prefix_suffix_files = [f for f in listdir(fpath) if isfile(join(fpath, f)) and
-                           (f[-suffix_len:] == '.pgz' and f[:prefix_len] == prefix)]
+                           (f[-suffix_len:] == suffix and f[:prefix_len] == prefix)]
     acc = []
     for f in prefix_suffix_files:
         with gzip.open(join(fpath, f)) as fp:
@@ -81,3 +92,17 @@ def pub2article_journal(pdata):
     aj_data = list(map(lambda x: (x['id'], x['properties']['issn_int']),
                    pdata_journals))
     return aj_data
+
+
+def gunzip_file(fname_in, fname_out):
+    with gzip.open(fname_in, 'rb') as f_in:
+        with open(fname_out, 'wb') as f_out:
+            copyfileobj(f_in, f_out)
+
+
+def main(sourcepath, destpath, global_year):
+
+    cr = ChunkReader(sourcepath, 'good', 'pgz', global_year)
+
+    logging.info('{0} good records, '
+                 '{1} bad records'.format(0, 0))
