@@ -32,6 +32,9 @@ class ChunkReader:
     def info(self):
         print(self.files)
 
+    def empty(self):
+        return bool(self.files)
+
     def pop(self):
         collect()
         if self.files:

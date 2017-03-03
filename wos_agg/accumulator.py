@@ -1,7 +1,8 @@
 from numpy import nan
-from pandas import DataFrame
+from pandas import DataFrame, Series
 from networkx import Graph, to_pandas_dataframe
 from graph_tools.reduce import reduce_bigraphs, update_edges, describe_graph
+from hashlib import sha1
 
 id_type = 'id'
 prop_type = 'prop'
@@ -23,12 +24,15 @@ class Accumulator(object):
         # x^int -> x^str (x int to x str dict) x ~ id, prop
         self.int_to_str_maps = {id_type: {}, prop_type: {}}
 
+        # prop^i : counts // keeps tracks of property frequencies
+        self.prop_counts = Series()
+
         # prop^i -> id^i (prop int to id int)
         self.g_prop_to_id = Graph()
         # prop^i(citing) -> prop^i(cited) (prop int to prop int)
         self.g_prop_to_prop = Graph()
 
-    def process_id_prop_list(self, in_list):
+    def process_id_prop_list(self, in_list, update_counts_flag=True):
         """
 
         :param in_list: [(id, prop)]
@@ -56,8 +60,23 @@ class Accumulator(object):
             self.g_prop_to_id.add_edge((prop_type, prop_),
                                        (id_type, id_), {'weight': 1.0})
 
+        if update_counts_flag:
+            new_props = map(lambda x: x[1], in_list)
+            self.update_prop_counts(new_props)
+
         # print('in process_id_prop_list() : g_prop_to_id composition')
         # print(describe_graph(self.g_prop_to_id))
+
+    def update_prop_counts(self, props):
+        cur_vc = Series(props).value_counts()
+        tmp_vc = DataFrame(index=list(set(self.prop_counts.index) | set(cur_vc.index)),
+                           columns=['acc', 'new'])
+        tmp_vc.sort_index(inplace=True)
+        tmp_vc['acc'].update(self.prop_counts)
+        tmp_vc['new'].update(cur_vc)
+        tmp_vc = tmp_vc.fillna(0.0)
+        tmp_vc['acc'] += tmp_vc['new']
+        self.prop_counts = tmp_vc['acc'].copy()
 
     def process_id_ids_list(self, in_list):
         """
@@ -128,8 +147,8 @@ class Accumulator(object):
     def g_props_to_df(self):
         df = to_pandas_dataframe(self.g_prop_to_prop).sort_index()
         df = df.reindex_axis(sorted(df.columns), axis=1)
-        index_ = list(filter(lambda x: x[0] == prop_type + '_A', df.index))
-        columns_ = list(filter(lambda x: x[0] == prop_type + '_B', df.columns))
+        index_ = list(filter(lambda x: x[0] == prop_type + '_B', df.index))
+        columns_ = list(filter(lambda x: x[0] == prop_type + '_A', df.columns))
         df = df.loc[list(index_), list(columns_)]
         df.rename(index=lambda x: x[1], columns=lambda x: x[1], inplace=True)
 
@@ -138,6 +157,20 @@ class Accumulator(object):
         df_tot.update(df)
         df = df_tot.fillna(0.)
         return df
+
+    def retrieve_zij_counts_index(self):
+        zij = self.g_props_to_df()
+        common_index = list(set(self.prop_counts.index) | set(zij.index))
+
+        df_tot = DataFrame(nan, columns=common_index, index=common_index)
+        df_tot.update(zij)
+        zij = df_tot.fillna(0.)
+
+        vc_tot = Series(nan, index=common_index)
+        vc_tot.update(self.prop_counts)
+        vc_tot = vc_tot.fillna(0.)
+        freqs = vc_tot/vc_tot.sum()
+        return zij.values, freqs.values, common_index
 
     def info(self):
         print('{0} elements in ids set'.format(len(self.sets[id_type])))
@@ -149,3 +182,39 @@ class Accumulator(object):
         print('{0} nodes, {1} edges in prop_to_prop'.format(len(self.g_prop_to_prop.nodes()),
                                                             len(self.g_prop_to_prop.edges())))
 
+        print('{0} unique props, {1} total prop counts '
+              'in prop_counts'.format(self.prop_counts.shape[0], self.prop_counts.sum()))
+
+
+class AccumulatorOrgs(object):
+
+    def __init__(self):
+        self.set_orgs = set()
+        self.dict_orgs = dict()
+
+    def update(self, inlist):
+        dd = self.dict_orgs
+        for org, syns, addr, country in inlist:
+            # one org per country
+            if not country:
+                country = ''
+            if not addr:
+                addr = ''
+            combo = '{0}_{1}_{2}'.format(org, country, addr)
+            key = sha1(combo.encode('utf-8')).hexdigest()
+            if key in dd.keys():
+                if dd[key]['org'] == org and dd[key]['cnt'] == country and dd[key]['addr']:
+                    dd[key]['syns'] |= set(syns)
+                    dd[key]['addr'] |= set([addr])
+                else:
+                    pass
+                    # same hash, different org, country and addr
+            else:
+                dd[key] = {'org': org, 'syns': set(syns + [org]),
+                           'addr': set([addr]), 'cnt': country}
+
+    def process_acc(self, acc):
+        list_of_lists = list(map(lambda x: list(map(lambda y: (y['organization'], y['organization_synonyms'],
+                                                               y['full_address'], y['country']), x['addresses'])), acc))
+        flat_list = [x for sublist in list_of_lists for x in sublist]
+        return flat_list

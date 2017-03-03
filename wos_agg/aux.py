@@ -1,19 +1,29 @@
-from os import listdir
-from os.path import isfile, join
-import gzip
 import pickle
 import logging
 import gzip
 from shutil import copyfileobj
 from os import listdir
 from os.path import isfile, join
+from pandas import DataFrame
+from numpy import vstack
 from .chunkreader import ChunkReader
+from .accumulator import Accumulator, AccumulatorOrgs
+from graph_tools.ef import calc_eigen_vec
 
 log_levels = {
     "DEBUG": logging.DEBUG, "INFO": logging.INFO,
     "WARNING": logging.WARNING, "ERROR": logging.ERROR,
     "CRITICAL": logging.CRITICAL
     }
+
+
+def is_int(x):
+    try:
+        int(x)
+    except:
+        return False
+    return True
+
 
 def fetch_accumulator(fpath, prefix, suffix):
     """
@@ -56,7 +66,8 @@ def soft_filter_year(refs, year, delta=None, filter_wos=True):
         # keep the ref if 'year is not available
         # or if delta is not provided or if it is provided
         # and year is greater then current year - delta
-        filtered = filter(lambda x: ('year' not in x.keys() or not delta or x['year'] > year - delta - 1), filtered)
+        filtered = filter(lambda x: ('year' not in x.keys() or
+                                     not is_int(x['year']) or not delta or x['year'] > year - delta - 1), filtered)
         # only keep uids
         filtered = map(lambda x: x['uid'], filtered)
     else:
@@ -103,6 +114,28 @@ def gunzip_file(fname_in, fname_out):
 def main(sourcepath, destpath, global_year):
 
     cr = ChunkReader(sourcepath, 'good', 'pgz', global_year)
+    ac = Accumulator(id_type_str=True, prop_type_str=False)
+    ac_org = AccumulatorOrgs()
+    while not cr.empty():
+        batch = cr.pop()
+        # implicit assumption : all record have the same year within the batch
+        batch_year = batch[0]['date']['year']
 
-    logging.info('{0} good records, '
-                 '{1} bad records'.format(0, 0))
+        aj = pub2article_journal(batch)
+        ac.process_id_prop_list(aj, batch_year != global_year)
+
+        if batch_year == global_year:
+            cite_data = pdata2citations(batch, delta=5, keep_issn=False)
+            ac.process_id_ids_list(cite_data)
+
+        flat_list = ac_org.process_acc(batch)
+        ac_org.update(flat_list)
+
+    zij, freq, index = ac.retrieve_zij_counts_index()
+
+    ef, ai = calc_eigen_vec(zij, freq, alpha=0.85, eps=1e-6)
+    df_out = DataFrame(data=vstack([index, ef.values, ai.values]).T, columns=['issns', 'ef', 'ai']).head()
+    df_out.to_csv(join(destpath, 'ef_ai_{0}.csv.gz'.format(global_year)), compression='gzip')
+    with gzip.open(join(destpath, 'orgs_{0}.pgz'.format(global_year)), 'wb') as fp:
+        pickle.dump(ac_org, fp)
+    logging.info('{0} {1} '.format(0, 0))
