@@ -22,5 +22,5 @@ setup(
         "Topic :: Utilities",
         "License :: OSI Approved :: BSD License",
     ],
-    install_requires=[]
+    install_requires=['numpy', 'python-Levenshtein']
 )

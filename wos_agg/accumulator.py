@@ -186,35 +186,36 @@ class Accumulator(object):
               'in prop_counts'.format(self.prop_counts.shape[0], self.prop_counts.sum()))
 
 
+keys = ['country', 'city', 'organizations_pref', 'organizations', 'full_address']
+
+
 class AccumulatorOrgs(object):
 
     def __init__(self):
         self.set_orgs = set()
         self.dict_orgs = dict()
+        self.g = Graph()
 
     def update(self, inlist):
-        dd = self.dict_orgs
-        for org, syns, addr, country in inlist:
-            # one org per country
-            if not country:
-                country = ''
-            if not addr:
-                addr = ''
-            combo = '{0}_{1}_{2}'.format(org, country, addr)
-            key = sha1(combo.encode('utf-8')).hexdigest()
-            if key in dd.keys():
-                if dd[key]['org'] == org and dd[key]['cnt'] == country and dd[key]['addr']:
-                    dd[key]['syns'] |= set(syns)
-                    dd[key]['addr'] |= set([addr])
-                else:
-                    pass
-                    # same hash, different org, country and addr
-            else:
-                dd[key] = {'org': org, 'syns': set(syns + [org]),
-                           'addr': set([addr]), 'cnt': country}
+        g = self.g
+        for x in inlist:
+            co, ci, orgp, org, add = x
+            if co not in g.nodes():
+                g.add_node(co)
+                if ci not in g.neighbors(co):
+                    g.add_edge(co, ci)
+                    if orgp not in g.neighbors(ci):
+                        g.add_edge(ci, orgp)
+                        if org not in g.neighbors(orgp):
+                            g.add_edge(orgp, org)
+                            if add not in g.neighbors(org):
+                                g.add_edge(org, add)
 
     def process_acc(self, acc):
-        list_of_lists = list(map(lambda x: list(map(lambda y: (y['organization'], y['organization_synonyms'],
-                                                               y['full_address'], y['country']), x['addresses'])), acc))
+        list_of_lists = map(lambda x: list(map(lambda y: (y['country'], y['city'],
+                                                          tuple(sorted(y['organizations_pref'])),
+                                                          tuple(sorted(y['organizations'])),
+                                                          y['full_address']), x['addresses'])), acc)
         flat_list = [x for sublist in list_of_lists for x in sublist]
-        return flat_list
+        flat_list2 = [list(zip(keys, x)) for x in flat_list]
+        return flat_list2
