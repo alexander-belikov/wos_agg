@@ -26,7 +26,7 @@ class ChunkReader:
             list(sorted(filter(lambda f: pat not in f, files)))
 
         logging.info('in ChunkReader.__init__() : '
-                     '(last_batch) {0} files : {1}', format(len(last_batch), ' '.join(last_batch)))
+                     '(last_batch) {0} files : {1}'.format(len(last_batch), ' '.join(last_batch)))
         logging.info('in ChunkReader.__init__() : '
                      '(first_batch) {0} files : {1}'.format(len(first_batch), ' '.join(first_batch)))
 
