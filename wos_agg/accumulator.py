@@ -1,6 +1,6 @@
 from numpy import nan
 from pandas import DataFrame, Series
-from networkx import Graph, to_pandas_dataframe
+from networkx import Graph, to_pandas_dataframe, write_gpickle
 from graph_tools.reduction import reduce_bigraphs, update_edges, describe_graph
 import logging
 
@@ -213,9 +213,12 @@ class AccumulatorOrgs(object):
     def process_acc(self, acc):
         filtered_acc = filter(lambda x: 'addresses' in x.keys(), acc)
         list_of_lists = map(lambda x: list(map(lambda y: (y['country'], y['city'],
-                                                          tuple(sorted(y['organizations_pref'])),
-                                                          tuple(sorted(y['organizations'])),
+                                                          '|'.join(sorted(y['organizations_pref'])),
+                                                          '|'.join(sorted(y['organizations'])),
                                                           y['full_address']), x['addresses'])), filtered_acc)
         flat_list = [x for sublist in list_of_lists for x in sublist]
         flat_list2 = [list(zip(keys, x)) for x in flat_list]
         return flat_list2
+
+    def dump(self, fpath):
+        write_gpickle(self.g, fpath)
