@@ -132,8 +132,8 @@ def main(sourcepath, destpath, global_year):
             cite_data = pdata2citations(batch, delta=5, keep_issn=False)
             logging.info(' : cite_data len {0}'.format(len(cite_data)))
             filtered_refs_len = sum(map(lambda x: len(x[1]), cite_data))
-            logging.info(' : cite_data len of raw refs {0}'.format(len(raw_refs_len)))
-            logging.info(' : cite_data len of filtered refs {0}'.format(len(filtered_refs_len)))
+            logging.info(' : cite_data len of raw refs {0}'.format(raw_refs_len))
+            logging.info(' : cite_data len of filtered refs {0}'.format(filtered_refs_len))
             ac.process_id_ids_list(cite_data)
             raw_refs += raw_refs_len
             filtered_refs_len += filtered_refs
