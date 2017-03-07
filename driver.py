@@ -27,7 +27,7 @@ if __name__ == "__main__":
     if is_int(args.year):
         year = int(args.year)
     else:
-        year = None
+        raise ValueError('year argument not an integer')
 
     logging.basicConfig(filename=args.logfile, level=log_levels[args.verbosity],
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
