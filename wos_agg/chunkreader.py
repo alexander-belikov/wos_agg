@@ -37,9 +37,9 @@ class ChunkReader:
                      'all files {0} files : {1}'.format(len(self.files), ' '.join(self.files)))
 
     def info(self):
-        print(self.files)
+        logging.info('{0}'.format(' '.join(self.files)))
 
-    def empty(self):
+    def not_empty(self):
         return bool(self.files)
 
     def pop(self):

@@ -117,7 +117,7 @@ def main(sourcepath, destpath, global_year):
     logging.info(' : global year {0}'.format(global_year))
     raw_refs = 0
     filtered_refs = 0
-    while not cr.empty():
+    while cr.not_empty():
         batch = cr.pop()
         # implicit assumption : all record have the same year within the batch
         batch_year = batch[0]['date']['year']
