@@ -140,8 +140,8 @@ def main(sourcepath, destpath, global_year):
         flat_list = ac_org.process_acc(batch)
         ac_org.update(flat_list)
 
-    logging.info(' : cite_data len of raw refs {0}'.format(len(raw_refs)))
-    logging.info(' : cite_data len of filtered refs {0}'.format(len(filtered_refs)))
+    logging.info(' : cite_data len of raw refs {0}'.format(raw_refs))
+    logging.info(' : cite_data len of filtered refs {0}'.format(filtered_refs))
 
     zij, freq, index = ac.retrieve_zij_counts_index()
 
