@@ -110,8 +110,6 @@ def gunzip_file(fname_in, fname_out):
 
 
 def main(sourcepath, destpath, global_year):
-    if is_int(global_year):
-        global_year
     cr = ChunkReader(sourcepath, 'good', 'pgz', global_year)
     ac = Accumulator(id_type_str=True, prop_type_str=False)
     ac_org = AccumulatorOrgs()
@@ -149,7 +147,4 @@ def main(sourcepath, destpath, global_year):
     ef, ai = calc_eigen_vec(zij, freq, alpha=0.85, eps=1e-6)
     df_out = DataFrame(data=vstack([index, ef, ai]).T, columns=['issns', 'ef', 'ai'])
     df_out.to_csv(join(destpath, 'ef_ai_{0}.csv.gz'.format(global_year)), compression='gzip')
-    ac_org.dump(join(destpath, 'orgs_{0}.gz'.format(global_year)))
-    # with gzip.open(join(destpath, 'orgs_{0}.pgz'.format(global_year)), 'wb') as fp:
-    #     pickle.dump(ac_org, fp)
-    # logging.info('{0} {1}'.format(0, 0))
+    ac_org.dump(join(destpath, 'orgs_{0}.pgz'.format(global_year)))
