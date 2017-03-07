@@ -2,7 +2,7 @@ from numpy import nan
 from pandas import DataFrame, Series
 from networkx import Graph, to_pandas_dataframe
 from graph_tools.reduction import reduce_bigraphs, update_edges, describe_graph
-from hashlib import sha1
+import logging
 
 id_type = 'id'
 prop_type = 'prop'
@@ -64,8 +64,8 @@ class Accumulator(object):
             new_props = map(lambda x: x[1], in_list)
             self.update_prop_counts(new_props)
 
-        # print('in process_id_prop_list() : g_prop_to_id composition')
-        # print(describe_graph(self.g_prop_to_id))
+        logging.info('in process_id_prop_list() : g_prop_to_id composition')
+        logging.info(describe_graph(self.g_prop_to_id))
 
     def update_prop_counts(self, props):
         cur_vc = Series(props).value_counts()
@@ -123,13 +123,12 @@ class Accumulator(object):
         prop_a_to_prop_b = reduce_bigraphs(self.g_prop_to_id, prop_b_to_id_a,
                                            (prop_type + '_A', prop_type + '_B'))
 
-        # print('in process_id_prop_list() : prop_a_to_prop_b composition')
-        # print(describe_graph(prop_a_to_prop_b))
-
-        # print('{0} nodes, {1} edges in prop_to_prop'.format(len(prop_a_to_prop_b.nodes()),
-        #                                                     len(prop_a_to_prop_b.edges())))
-
         update_edges(self.g_prop_to_prop, prop_a_to_prop_b)
+        logging.info('in process_id_prop_list() : prop_a_to_prop_b composition')
+        logging.info(describe_graph(prop_a_to_prop_b))
+
+        logging.info('{0} nodes, {1} edges in prop_to_prop'.format(len(prop_a_to_prop_b.nodes()),
+                                                                   len(prop_a_to_prop_b.edges())))
 
     def update_sets_maps(self, new_items, key):
         outstanding = list(set(new_items) - self.sets[key])
@@ -173,17 +172,17 @@ class Accumulator(object):
         return zij.values, freqs.values, common_index
 
     def info(self):
-        print('{0} elements in ids set'.format(len(self.sets[id_type])))
-        print('{0} elements in props set'.format(len(self.sets[prop_type])))
-        print('{0} in int to str ids map'.format(len(self.int_to_str_maps[id_type])))
-        print('{0} in int to str props map'.format(len(self.int_to_str_maps[prop_type])))
-        print('{0} nodes, {1} edges in prop_to_id'.format(len(self.g_prop_to_id.nodes()),
-                                                          len(self.g_prop_to_id.edges())))
-        print('{0} nodes, {1} edges in prop_to_prop'.format(len(self.g_prop_to_prop.nodes()),
-                                                            len(self.g_prop_to_prop.edges())))
+        logging.info('{0} elements in ids set'.format(len(self.sets[id_type])))
+        logging.info('{0} elements in props set'.format(len(self.sets[prop_type])))
+        logging.info('{0} in int to str ids map'.format(len(self.int_to_str_maps[id_type])))
+        logging.info('{0} in int to str props map'.format(len(self.int_to_str_maps[prop_type])))
+        logging.info('{0} nodes, {1} edges in prop_to_id'.format(len(self.g_prop_to_id.nodes()),
+                                                                 len(self.g_prop_to_id.edges())))
+        logging.info('{0} nodes, {1} edges in prop_to_prop'.format(len(self.g_prop_to_prop.nodes()),
+                                                                   len(self.g_prop_to_prop.edges())))
 
-        print('{0} unique props, {1} total prop counts '
-              'in prop_counts'.format(self.prop_counts.shape[0], self.prop_counts.sum()))
+        logging.info('{0} unique props, {1} total prop counts in '
+                     'prop_counts'.format(self.prop_counts.shape[0], self.prop_counts.sum()))
 
 
 keys = ['country', 'city', 'organizations_pref', 'organizations', 'full_address']
