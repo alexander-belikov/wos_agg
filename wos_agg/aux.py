@@ -146,7 +146,7 @@ def main(sourcepath, destpath, global_year):
     zij, freq, index = ac.retrieve_zij_counts_index()
 
     ef, ai = calc_eigen_vec(zij, freq, alpha=0.85, eps=1e-6)
-    df_out = DataFrame(data=vstack([index, ef.values, ai.values]).T, columns=['issns', 'ef', 'ai'])
+    df_out = DataFrame(data=vstack([index, ef, ai]).T, columns=['issns', 'ef', 'ai'])
     df_out.to_csv(join(destpath, 'ef_ai_{0}.csv.gz'.format(global_year)), compression='gzip')
     with gzip.open(join(destpath, 'orgs_{0}.pgz'.format(global_year)), 'wb') as fp:
         pickle.dump(ac_org, fp)
