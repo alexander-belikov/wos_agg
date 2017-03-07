@@ -114,20 +114,34 @@ def main(sourcepath, destpath, global_year):
     cr = ChunkReader(sourcepath, 'good', 'pgz', global_year)
     ac = Accumulator(id_type_str=True, prop_type_str=False)
     ac_org = AccumulatorOrgs()
+    logging.info(' : global year {0}'.format(global_year))
+    raw_refs = 0
+    filtered_refs = 0
     while not cr.empty():
         batch = cr.pop()
         # implicit assumption : all record have the same year within the batch
         batch_year = batch[0]['date']['year']
-
+        logging.info(' : batch year {0}'.format(batch_year))
         aj = pub2article_journal(batch)
+        logging.info(' : aj len {0}'.format(len(aj)))
         ac.process_id_prop_list(aj, batch_year != global_year)
 
         if batch_year == global_year:
+            raw_refs_len = sum(map(lambda x: len(x['references']), batch))
             cite_data = pdata2citations(batch, delta=5, keep_issn=False)
+            logging.info(' : cite_data len {0}'.format(len(cite_data)))
+            filtered_refs_len = sum(map(lambda x: len(x[1]), cite_data))
+            logging.info(' : cite_data len of raw refs {0}'.format(len(raw_refs_len)))
+            logging.info(' : cite_data len of filtered refs {0}'.format(len(filtered_refs_len)))
             ac.process_id_ids_list(cite_data)
+            raw_refs += raw_refs_len
+            filtered_refs_len += filtered_refs
 
         flat_list = ac_org.process_acc(batch)
         ac_org.update(flat_list)
+
+    logging.info(' : cite_data len of raw refs {0}'.format(len(raw_refs)))
+    logging.info(' : cite_data len of filtered refs {0}'.format(len(filtered_refs)))
 
     zij, freq, index = ac.retrieve_zij_counts_index()
 
