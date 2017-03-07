@@ -1,6 +1,6 @@
 import argparse
 import logging
-from wos_agg.aux import main, log_levels, is_int
+from wos_agg.aux import main, log_levels
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -23,11 +23,6 @@ if __name__ == "__main__":
                         help='Logfile path. Defaults to ./wos_parser.log')
 
     args = parser.parse_args()
-
-    if is_int(args.maxchunks):
-        maxchunks = int(args.maxchunks)
-    else:
-        maxchunks = None
 
     logging.basicConfig(filename=args.logfile, level=log_levels[args.verbosity],
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',

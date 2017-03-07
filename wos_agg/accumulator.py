@@ -1,7 +1,7 @@
 from numpy import nan
 from pandas import DataFrame, Series
 from networkx import Graph, to_pandas_dataframe
-from graph_tools.reduce import reduce_bigraphs, update_edges, describe_graph
+from graph_tools.reduction import reduce_bigraphs, update_edges, describe_graph
 from hashlib import sha1
 
 id_type = 'id'
