@@ -211,10 +211,11 @@ class AccumulatorOrgs(object):
                                 g.add_edge(org, add)
 
     def process_acc(self, acc):
+        filtered_acc = filter(lambda x: 'addresses' in x.keys(), acc)
         list_of_lists = map(lambda x: list(map(lambda y: (y['country'], y['city'],
                                                           tuple(sorted(y['organizations_pref'])),
                                                           tuple(sorted(y['organizations'])),
-                                                          y['full_address']), x['addresses'])), acc)
+                                                          y['full_address']), x['addresses'])), filtered_acc)
         flat_list = [x for sublist in list_of_lists for x in sublist]
         flat_list2 = [list(zip(keys, x)) for x in flat_list]
         return flat_list2
