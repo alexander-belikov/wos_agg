@@ -25,16 +25,16 @@ class ChunkReader:
         first_batch = \
             list(sorted(filter(lambda f: pat not in f, files)))
 
-        logging.info('in ChunkReader.__init__ : (last_batch) {0} files : {1}',
-                     len(last_batch), ' '.join(last_batch))
-        logging.info('in ChunkReader.__init__ : (first_batch) {0} files : {1}',
-                     len(first_batch), ' '.join(first_batch))
+        logging.info('in ChunkReader.__init__() : (last_batch) {0} '
+                     'files : {1}', format(len(last_batch), ' '.join(last_batch)))
+        logging.info('in ChunkReader.__init__() : (first_batch) {0} '
+                     'files : {1}'.format(len(first_batch), ' '.join(first_batch)))
 
         first_batch.extend(last_batch)
         # queue-like usage
         self.files = first_batch[::-1]
-        logging.info('in ChunkReader.__init__ : files {0} files : {1}',
-                     len(self.files), ' '.join(self.files))
+        logging.info('in ChunkReader.__init__ : all files {0} '
+                     'files : {1}'.format(len(self.files), ' '.join(self.files)))
 
     def info(self):
         print(self.files)
