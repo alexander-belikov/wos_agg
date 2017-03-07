@@ -110,7 +110,8 @@ def gunzip_file(fname_in, fname_out):
 
 
 def main(sourcepath, destpath, global_year):
-
+    if is_int(global_year):
+        global_year
     cr = ChunkReader(sourcepath, 'good', 'pgz', global_year)
     ac = Accumulator(id_type_str=True, prop_type_str=False)
     ac_org = AccumulatorOrgs()
