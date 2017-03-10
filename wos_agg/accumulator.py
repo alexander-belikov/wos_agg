@@ -114,7 +114,7 @@ class Accumulator(object):
 
         nodes_type_a = map(lambda x: (id_type, x[0]), in4)
         ids_b = [item for sublist in in4 for item in sublist[1]]
-        nodes_type_b = map(lambda x: (id_type, id_, ), ids_b)
+        nodes_type_b = map(lambda x: (id_type, x), ids_b)
 
         logging.info(' process_id_ids_list() : citation Graph (A->B) created')
         logging.info(' {0}'.format(describe_graph(g_refs)))
