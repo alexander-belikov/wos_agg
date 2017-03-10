@@ -134,14 +134,14 @@ def main(sourcepath, destpath, global_year):
             logging.info(' : cite_data len of filtered refs {0}'.format(filtered_refs_len))
             ac.process_id_ids_list(cite_data)
             raw_refs += raw_refs_len
-            filtered_refs_len += filtered_refs
+            filtered_refs += filtered_refs_len
 
         flat_list = ac_org.process_acc(batch)
         ac_org.update(flat_list)
         ac.info()
 
-        logging.info(' main() : cite_data len of raw refs {0}'.format(raw_refs))
-        logging.info(' main() : cite_data len of filtered refs {0}'.format(filtered_refs))
+        logging.info(' main() : total raw refs {0}'.format(raw_refs))
+        logging.info(' main() : total filtered refs {0}'.format(filtered_refs))
 
     zij, freq, index = ac.retrieve_zij_counts_index()
     logging.info(' main() : citation matrix retrieved')
