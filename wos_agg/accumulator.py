@@ -1,7 +1,8 @@
 from numpy import nan
 from pandas import DataFrame, Series
 from networkx import Graph, to_pandas_dataframe, write_gpickle
-from graph_tools.reduction import reduce_bigraphs, update_edges, describe_graph
+from graph_tools.reduction import reduce_bigraphs, update_edges, \
+    describe_graph, project_to_nodes
 import logging
 
 id_type = 'id'
@@ -111,13 +112,20 @@ class Accumulator(object):
             for item_ in refs_:
                 g_refs.add_edge((id_type+'_A', id_), (id_type, item_), {'weight': 1.0})
 
+        nodes_type_a = map(lambda x: (id_type, x[0]), in4)
+        ids_b = [item for sublist in in4 for item in sublist[1]]
+        nodes_type_b = map(lambda x: (id_type, id_, ), ids_b)
+
         logging.info(' process_id_ids_list() : citation Graph (A->B) created')
         logging.info(' {0}'.format(describe_graph(g_refs)))
 
         # g_prop_to_id : self.type[0]//id, self.type[1]//prop
         # A -> B (A cites B)
         # j -> id; id_A -> id :  j_B -> id(A)
-        prop_b_to_id_a = reduce_bigraphs(self.g_prop_to_id, g_refs,
+        # project g_prop_to_id to nodes of type B
+        proj_prop_to_id = project_to_nodes(self.g_prop_to_id, nodes_type_b)
+
+        prop_b_to_id_a = reduce_bigraphs(proj_prop_to_id, g_refs,
                                          (prop_type + '_B', id_type))
 
         logging.info(' process_id_ids_list() : cited journals to citing articles graph '
@@ -128,7 +136,10 @@ class Accumulator(object):
         # print(describe_graph(prop_b_to_id_a))
 
         # j -> id; j_B -> id :  j_A -> j_B
-        prop_a_to_prop_b = reduce_bigraphs(self.g_prop_to_id, prop_b_to_id_a,
+        # project g_prop_to_id to nodes of type B
+        proj_prop_to_id = project_to_nodes(self.g_prop_to_id, nodes_type_a)
+
+        prop_a_to_prop_b = reduce_bigraphs(proj_prop_to_id, prop_b_to_id_a,
                                            (prop_type + '_A', prop_type + '_B'))
 
         logging.info(' process_id_ids_list() : citing journals to cited journals graph '
