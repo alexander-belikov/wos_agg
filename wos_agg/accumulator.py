@@ -232,6 +232,9 @@ class AccumulatorOrgs(object):
                             if add not in g.neighbors(org):
                                 g.add_edge(org, add)
 
+    def info(self):
+        self.loggin('AccumulatorOrgs.info() : {0}'.format(describe_graph(self.g)))
+
     def process_acc(self, acc):
         filtered_acc = filter(lambda x: 'addresses' in x.keys(), acc)
         list_of_lists = map(lambda x: list(map(lambda y: (y['country'], y['city'],
