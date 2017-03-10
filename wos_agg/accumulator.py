@@ -62,9 +62,10 @@ class Accumulator(object):
 
         if update_counts_flag:
             new_props = map(lambda x: x[1], in_list)
+            logging.info(' process_id_prop_list() : updating property counts')
             self.update_prop_counts(new_props)
 
-        logging.info('in process_id_prop_list() : g_prop_to_id composition')
+        logging.info(' process_id_prop_list() : g_prop_to_id composition')
         logging.info(describe_graph(self.g_prop_to_id))
 
     def update_prop_counts(self, props):
@@ -77,6 +78,7 @@ class Accumulator(object):
         tmp_vc = tmp_vc.fillna(0.0)
         tmp_vc['acc'] += tmp_vc['new']
         self.prop_counts = tmp_vc['acc'].copy()
+        logging.info(' update_prop_counts() : a total of {0} counted'.format(self.prop_counts.sum()))
 
     def process_id_ids_list(self, in_list):
         """
@@ -89,16 +91,18 @@ class Accumulator(object):
         thus all ids from in_list should already be processed
         by process_id_prop_list
         """
-
+        # filter out pairs where id not in the set of ids
         in2 = filter(lambda x: x[0] in self.sets[id_type], in_list)
-
+        # for every pair filter out the citing ids not in the set of ids
         in3 = map(lambda x: (x[0], list(filter(lambda y: y in self.sets[id_type],
                                                x[1]))), in2)
+        # filter out pairs where the citing list is empty
         in4 = filter(lambda x: x[1], in3)
 
         if self.type_str[id_type]:
-            in4 = map(lambda x: (self.str_to_int_maps[id_type][x[0]],
-                                 list(map(lambda y: self.str_to_int_maps[id_type][y], x[1]))), in4)
+            in4 = list(map(lambda x: (self.str_to_int_maps[id_type][x[0]],
+                                      list(map(lambda y: self.str_to_int_maps[id_type][y], x[1]))), in4))
+        logging.info(' process_id_ids_list() : filter out pairs where id not in the set of ids : len {0}')
 
         # w -> u : w cites u's
         g_refs = Graph()
@@ -107,14 +111,18 @@ class Accumulator(object):
             for item_ in refs_:
                 g_refs.add_edge((id_type+'_A', id_), (id_type, item_), {'weight': 1.0})
 
-        # print('in process_id_prop_list() : g_refs composition')
-        # print(describe_graph(g_refs))
+        logging.info(' process_id_ids_list() : citation Graph (A->B) created')
+        logging.info(' {0}'.format(describe_graph(g_refs)))
 
         # g_prop_to_id : self.type[0]//id, self.type[1]//prop
         # A -> B (A cites B)
         # j -> id; id_A -> id :  j_B -> id(A)
         prop_b_to_id_a = reduce_bigraphs(self.g_prop_to_id, g_refs,
                                          (prop_type + '_B', id_type))
+
+        logging.info(' process_id_ids_list() : cited journals to citing articles graph '
+                     '(j->B,A->B)->(jB->A) created')
+        logging.info(' {0}'.format(describe_graph(prop_b_to_id_a)))
 
         # print('in process_id_prop_list() : prop_b_to_id_a composition')
         # print(describe_graph(prop_b_to_id_a))
@@ -123,25 +131,39 @@ class Accumulator(object):
         prop_a_to_prop_b = reduce_bigraphs(self.g_prop_to_id, prop_b_to_id_a,
                                            (prop_type + '_A', prop_type + '_B'))
 
+        logging.info(' process_id_ids_list() : citing journals to cited journals graph '
+                     '(j->A,jB->A)->(jA->jB) created')
+        logging.info(' {0}'.format(describe_graph(prop_a_to_prop_b)))
+
+        logging.info(' process_id_prop_list() : updating prop_to_prop')
+
         update_edges(self.g_prop_to_prop, prop_a_to_prop_b)
-        logging.info('in process_id_prop_list() : prop_a_to_prop_b composition')
+        logging.info(' process_id_prop_list() : prop_a_to_prop_b composition')
         logging.info(describe_graph(prop_a_to_prop_b))
 
-        logging.info('{0} nodes, {1} edges in prop_to_prop'.format(len(prop_a_to_prop_b.nodes()),
+        logging.info(' {0} nodes, {1} edges in prop_to_prop'.format(len(prop_a_to_prop_b.nodes()),
                                                                    len(prop_a_to_prop_b.edges())))
 
     def update_sets_maps(self, new_items, key):
         outstanding = list(set(new_items) - self.sets[key])
         if outstanding:
+            n = len(self.sets[key])
             self.sets[key].update(outstanding)
+            logging.info(' update_sets_maps() : '
+                         'sets[{0}] updated, currently holding {1} elements'.format(key, len(self.sets[key])))
             if self.type_str[key]:
-                n = len(self.sets[key])
+                logging.info(' update_sets_maps() : key {0} is of str type'.format(key))
                 outstanding_ints = list(range(n, n + len(outstanding)))
+                logging.info(' update_sets_maps() : '
+                             'i_to_str and str_to_i dicts will grow from {0} to {1}'.format(n, n + len(outstanding)))
                 int_to_str_outstanding = dict(zip(outstanding_ints, outstanding))
                 str_to_int_outstanding = dict(zip(outstanding, outstanding_ints))
-
                 self.int_to_str_maps[key].update(int_to_str_outstanding)
                 self.str_to_int_maps[key].update(str_to_int_outstanding)
+                logging.info(' update_sets_maps() : '
+                             'i_to_str len = {0}'.format(len(self.int_to_str_maps[key])))
+                logging.info(' update_sets_maps() : '
+                             'str_to_i len = {0}'.format(len(self.str_to_int_maps[key])))
 
     def g_props_to_df(self):
         df = to_pandas_dataframe(self.g_prop_to_prop).sort_index()
@@ -172,16 +194,16 @@ class Accumulator(object):
         return zij.values, freqs.values, common_index
 
     def info(self):
-        logging.info('{0} elements in ids set'.format(len(self.sets[id_type])))
-        logging.info('{0} elements in props set'.format(len(self.sets[prop_type])))
-        logging.info('{0} in int to str ids map'.format(len(self.int_to_str_maps[id_type])))
-        logging.info('{0} in int to str props map'.format(len(self.int_to_str_maps[prop_type])))
-        logging.info('{0} nodes, {1} edges in prop_to_id'.format(len(self.g_prop_to_id.nodes()),
+        logging.info(' {0} elements in ids set'.format(len(self.sets[id_type])))
+        logging.info(' {0} elements in props set'.format(len(self.sets[prop_type])))
+        logging.info(' {0} in int to str ids map'.format(len(self.int_to_str_maps[id_type])))
+        logging.info(' {0} in int to str props map'.format(len(self.int_to_str_maps[prop_type])))
+        logging.info(' {0} nodes, {1} edges in prop_to_id'.format(len(self.g_prop_to_id.nodes()),
                                                                  len(self.g_prop_to_id.edges())))
-        logging.info('{0} nodes, {1} edges in prop_to_prop'.format(len(self.g_prop_to_prop.nodes()),
+        logging.info(' {0} nodes, {1} edges in prop_to_prop'.format(len(self.g_prop_to_prop.nodes()),
                                                                    len(self.g_prop_to_prop.edges())))
 
-        logging.info('{0} unique props, {1} total prop counts in '
+        logging.info(' {0} unique props, {1} total prop counts in '
                      'prop_counts'.format(self.prop_counts.shape[0], self.prop_counts.sum()))
 
 
