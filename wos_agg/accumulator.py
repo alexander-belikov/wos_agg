@@ -2,10 +2,10 @@ from numpy import nan
 from pandas import DataFrame, Series
 from networkx import Graph, to_pandas_dataframe, write_gpickle, from_pandas_dataframe
 from graph_tools.reduction import reduce_bigraphs, update_edges, \
-    describe_graph, project_to_nodes
+    describe_graph, project_to_nodes, project_graph_return_adj
 from graph_tools.adj_aux import create_adj_matrix
 import logging
-from numpy import dot
+from numpy import dot, sort
 
 id_type = 'id'
 prop_type = 'prop'
@@ -108,28 +108,23 @@ class Accumulator(object):
         logging.info(' process_id_ids_list() : filter out pairs where id not in the set of ids')
 
         m_ida_idb, ida, idb = create_adj_matrix(in4)
+        logging.info('m_ida_idb shape {0}'.format(m_ida_idb))
 
         nodes_type_a = list(map(lambda x: (id_type, x), ida))
         nodes_type_b = list(map(lambda x: (id_type, x), idb))
 
-        # g_prop_to_id : self.type[0]//id, self.type[1]//prop
-        # A -> B (A cites B)
-        # j -> id; id_A -> id :  j_B -> id(A)
-        # project g_prop_to_id to nodes of type B
-        proj_prop_to_id = project_to_nodes(self.g_prop_to_id, nodes_type_a)
-        df_prop_a_to_id_a = to_pandas_dataframe(proj_prop_to_id)
-        prop_a = list(filter(lambda x: x[0] == prop_type, df_prop_a_to_id_a.columns))
-        logging.info(df_prop_a_to_id_a.shape)
-        logging.info('{0} {1}'.format(prop_a[0], nodes_type_a[0]))
-        m_prop_a_to_ida = df_prop_a_to_id_a.loc[prop_a, nodes_type_a]
+        m_prop_a_to_ida = project_graph_return_adj(self.g_prop_to_id, nodes_type_a, transpose=True)
+        logging.info('m_prop_a_to_ida shape {0}'.format(m_prop_a_to_ida))
+        m_idb_to_prop_b = project_graph_return_adj(self.g_prop_to_id, nodes_type_b)
+        logging.info('m_idb_to_prop_b shape {0}'.format(m_idb_to_prop_b))
+        prop_a = list(map(lambda x: ('{0}_a'.format(x[0]), x[1]), m_prop_a_to_ida.index))
+        prop_b = list(map(lambda x: ('{0}_b'.format(x[0]), x[1]), m_idb_to_prop_b.columns))
 
-        proj_prop_to_id = project_to_nodes(self.g_prop_to_id, nodes_type_b)
-        df_prop_b_to_id_b = to_pandas_dataframe(proj_prop_to_id)
-        prop_b = list(filter(lambda x: x[0] == prop_type, df_prop_b_to_id_b.columns))
-        m_to_idb_prop_b = df_prop_b_to_id_b.loc[nodes_type_b, prop_b]
-
-        cc = dot(m_prop_a_to_ida, dot(m_ida_idb, m_to_idb_prop_b))
-        prop_a_to_prop_b = from_pandas_dataframe(DataFrame(cc, index=prop_a, columns=prop_b))
+        cc = dot(m_prop_a_to_ida, dot(m_ida_idb, m_idb_to_prop_b))
+        ser = DataFrame(cc, index=prop_a, columns=prop_b).stack()
+        df_prepared = ser[ser != 0.0].reset_index().rename(columns={0: 'weight'})
+        prop_a_to_prop_b = from_pandas_dataframe(df_prepared, 'level_0', 'level_1', 'weight')
+        logging.info('cc {0}'.format(cc))
 
         update_edges(self.g_prop_to_prop, prop_a_to_prop_b)
         logging.info(' process_id_prop_list() : prop_a_to_prop_b composition')
@@ -160,11 +155,12 @@ class Accumulator(object):
                              'str_to_i len = {0}'.format(len(self.str_to_int_maps[key])))
 
     def g_props_to_df(self):
-        df = to_pandas_dataframe(self.g_prop_to_prop).sort_index()
-        df = df.reindex_axis(sorted(df.columns), axis=1)
-        index_ = list(filter(lambda x: x[0] == prop_type + '_B', df.index))
-        columns_ = list(filter(lambda x: x[0] == prop_type + '_A', df.columns))
-        df = df.loc[list(index_), list(columns_)]
+        df = to_pandas_dataframe(self.g_prop_to_prop)
+        index_ = sorted(list(filter(lambda x: x[0] == prop_type + '_b', df.index)), key=lambda x: x[1])
+        columns_ = sorted(list(filter(lambda x: x[0] == prop_type + '_a', df.columns)), key=lambda x: x[1])
+        logging.info('props to props shape {0}'.format(df))
+
+        df = df.loc[index_, columns_]
         df.rename(index=lambda x: x[1], columns=lambda x: x[1], inplace=True)
 
         sorted_props = sorted(list(set(df.index).union(set(df.columns))))
