@@ -1,9 +1,11 @@
 from numpy import nan
 from pandas import DataFrame, Series
-from networkx import Graph, to_pandas_dataframe, write_gpickle
+from networkx import Graph, to_pandas_dataframe, write_gpickle, from_pandas_dataframe
 from graph_tools.reduction import reduce_bigraphs, update_edges, \
     describe_graph, project_to_nodes
+from graph_tools.adj_aux import create_adj_matrix
 import logging
+from numpy import dot
 
 id_type = 'id'
 prop_type = 'prop'
@@ -103,57 +105,38 @@ class Accumulator(object):
         if self.type_str[id_type]:
             in4 = list(map(lambda x: (self.str_to_int_maps[id_type][x[0]],
                                       list(map(lambda y: self.str_to_int_maps[id_type][y], x[1]))), in4))
-        logging.info(' process_id_ids_list() : filter out pairs where id not in the set of ids : len {0}')
+        logging.info(' process_id_ids_list() : filter out pairs where id not in the set of ids')
 
-        # w -> u : w cites u's
-        g_refs = Graph()
-        # update self.prop_to_id = Graph()
-        for id_, refs_ in in4:
-            for item_ in refs_:
-                g_refs.add_edge((id_type+'_A', id_), (id_type, item_), {'weight': 1.0})
+        m_ida_idb, ida, idb = create_adj_matrix(in4)
 
-        nodes_type_a = map(lambda x: (id_type, x[0]), in4)
-        ids_b = [item for sublist in in4 for item in sublist[1]]
-        nodes_type_b = map(lambda x: (id_type, x), ids_b)
-
-        logging.info(' process_id_ids_list() : citation Graph (A->B) created')
-        logging.info(' {0}'.format(describe_graph(g_refs)))
+        nodes_type_a = list(map(lambda x: (id_type, x), ida))
+        nodes_type_b = list(map(lambda x: (id_type, x), idb))
 
         # g_prop_to_id : self.type[0]//id, self.type[1]//prop
         # A -> B (A cites B)
         # j -> id; id_A -> id :  j_B -> id(A)
         # project g_prop_to_id to nodes of type B
-        proj_prop_to_id = project_to_nodes(self.g_prop_to_id, nodes_type_b)
-
-        prop_b_to_id_a = reduce_bigraphs(proj_prop_to_id, g_refs,
-                                         (prop_type + '_B', id_type))
-
-        logging.info(' process_id_ids_list() : cited journals to citing articles graph '
-                     '(j->B,A->B)->(jB->A) created')
-        logging.info(' {0}'.format(describe_graph(prop_b_to_id_a)))
-
-        # print('in process_id_prop_list() : prop_b_to_id_a composition')
-        # print(describe_graph(prop_b_to_id_a))
-
-        # j -> id; j_B -> id :  j_A -> j_B
-        # project g_prop_to_id to nodes of type B
         proj_prop_to_id = project_to_nodes(self.g_prop_to_id, nodes_type_a)
+        df_prop_a_to_id_a = to_pandas_dataframe(proj_prop_to_id)
+        prop_a = list(filter(lambda x: x[0] == prop_type, df_prop_a_to_id_a.columns))
+        logging.info(df_prop_a_to_id_a.shape)
+        logging.info('{0} {1}'.format(prop_a[0], nodes_type_a[0]))
+        m_prop_a_to_ida = df_prop_a_to_id_a.loc[prop_a, nodes_type_a]
 
-        prop_a_to_prop_b = reduce_bigraphs(proj_prop_to_id, prop_b_to_id_a,
-                                           (prop_type + '_A', prop_type + '_B'))
+        proj_prop_to_id = project_to_nodes(self.g_prop_to_id, nodes_type_b)
+        df_prop_b_to_id_b = to_pandas_dataframe(proj_prop_to_id)
+        prop_b = list(filter(lambda x: x[0] == prop_type, df_prop_b_to_id_b.columns))
+        m_to_idb_prop_b = df_prop_b_to_id_b.loc[nodes_type_b, prop_b]
 
-        logging.info(' process_id_ids_list() : citing journals to cited journals graph '
-                     '(j->A,jB->A)->(jA->jB) created')
-        logging.info(' {0}'.format(describe_graph(prop_a_to_prop_b)))
-
-        logging.info(' process_id_prop_list() : updating prop_to_prop')
+        cc = dot(m_prop_a_to_ida, dot(m_ida_idb, m_to_idb_prop_b))
+        prop_a_to_prop_b = from_pandas_dataframe(DataFrame(cc, index=prop_a, columns=prop_b))
 
         update_edges(self.g_prop_to_prop, prop_a_to_prop_b)
         logging.info(' process_id_prop_list() : prop_a_to_prop_b composition')
         logging.info(describe_graph(prop_a_to_prop_b))
 
         logging.info(' {0} nodes, {1} edges in prop_to_prop'.format(len(prop_a_to_prop_b.nodes()),
-                                                                   len(prop_a_to_prop_b.edges())))
+                                                                    len(prop_a_to_prop_b.edges())))
 
     def update_sets_maps(self, new_items, key):
         outstanding = list(set(new_items) - self.sets[key])
