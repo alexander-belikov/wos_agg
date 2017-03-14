@@ -108,15 +108,15 @@ class Accumulator(object):
         logging.info(' process_id_ids_list() : filter out pairs where id not in the set of ids')
 
         m_ida_idb, ida, idb = create_adj_matrix(in4)
-        logging.info('m_ida_idb shape {0}'.format(m_ida_idb))
+        logging.info('m_ida_idb shape {0}'.format(m_ida_idb.shape))
 
         nodes_type_a = list(map(lambda x: (id_type, x), ida))
         nodes_type_b = list(map(lambda x: (id_type, x), idb))
 
         m_prop_a_to_ida = project_graph_return_adj(self.g_prop_to_id, nodes_type_a, transpose=True)
-        logging.info('m_prop_a_to_ida shape {0}'.format(m_prop_a_to_ida))
+        logging.info('m_prop_a_to_ida shape {0}'.format(m_prop_a_to_ida.shape))
         m_idb_to_prop_b = project_graph_return_adj(self.g_prop_to_id, nodes_type_b)
-        logging.info('m_idb_to_prop_b shape {0}'.format(m_idb_to_prop_b))
+        logging.info('m_idb_to_prop_b shape {0}'.format(m_idb_to_prop_b.shape))
         prop_a = list(map(lambda x: ('{0}_a'.format(x[0]), x[1]), m_prop_a_to_ida.index))
         prop_b = list(map(lambda x: ('{0}_b'.format(x[0]), x[1]), m_idb_to_prop_b.columns))
 
@@ -124,7 +124,7 @@ class Accumulator(object):
         ser = DataFrame(cc, index=prop_a, columns=prop_b).stack()
         df_prepared = ser[ser != 0.0].reset_index().rename(columns={0: 'weight'})
         prop_a_to_prop_b = from_pandas_dataframe(df_prepared, 'level_0', 'level_1', 'weight')
-        logging.info('cc {0}'.format(cc))
+        logging.info('cc {0}'.format(cc.shape))
 
         update_edges(self.g_prop_to_prop, prop_a_to_prop_b)
         logging.info(' process_id_prop_list() : prop_a_to_prop_b composition')
@@ -158,7 +158,7 @@ class Accumulator(object):
         df = to_pandas_dataframe(self.g_prop_to_prop)
         index_ = sorted(list(filter(lambda x: x[0] == prop_type + '_b', df.index)), key=lambda x: x[1])
         columns_ = sorted(list(filter(lambda x: x[0] == prop_type + '_a', df.columns)), key=lambda x: x[1])
-        logging.info('props to props shape {0}'.format(df))
+        logging.info('props to props shape {0}'.format(df.shape))
 
         df = df.loc[index_, columns_]
         df.rename(index=lambda x: x[1], columns=lambda x: x[1], inplace=True)
