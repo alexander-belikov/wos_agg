@@ -139,7 +139,6 @@ class Accumulator(object):
 
         cc = dot(m_prop_a_to_ida, dot(m_ida_idb, m_idb_to_prop_b))
         ser = DataFrame(cc, index=prop_a, columns=prop_b).stack()
-        logging.info(' ::: {0}'.format(sum(ser.isnull())))
         df_prepared = ser[ser != 0.0].reset_index().rename(columns={0: 'weight'})
         prop_a_to_prop_b = from_pandas_dataframe(df_prepared, 'level_0', 'level_1', 'weight')
         logging.info(' process_id_ids_list() : cc {0}'.format(cc.shape))
@@ -172,10 +171,11 @@ class Accumulator(object):
                              'str_to_i len = {0}'.format(len(self.str_to_int_maps[key])))
 
     def g_props_to_df(self):
+        logging.info(' in g_props_to_df() : describe prop to prop')
+        logging.info(describe_graph(self.g_prop_to_prop))
         df = to_pandas_dataframe(self.g_prop_to_prop)
         index_ = sorted(list(filter(lambda x: x[0] == prop_type + '_b', df.index)), key=lambda x: x[1])
         columns_ = sorted(list(filter(lambda x: x[0] == prop_type + '_a', df.columns)), key=lambda x: x[1])
-        logging.info('props to props shape {0}'.format(df.shape))
 
         df = df.loc[index_, columns_]
         df.rename(index=lambda x: x[1], columns=lambda x: x[1], inplace=True)
@@ -183,6 +183,7 @@ class Accumulator(object):
         sorted_props = sorted(list(set(df.index).union(set(df.columns))))
         df_tot = DataFrame(nan, columns=sorted_props, index=sorted_props)
         df_tot.update(df)
+        logging.info(' j to j matrix shape {0}'.format(df_tot.shape))
         df = df_tot.fillna(0.)
         return df
 
