@@ -1,11 +1,11 @@
 from numpy import nan
 from pandas import DataFrame, Series
 from networkx import Graph, to_pandas_dataframe, write_gpickle, from_pandas_dataframe
-from graph_tools.reduction import reduce_bigraphs, update_edges, \
-    describe_graph, project_to_nodes, project_graph_return_adj
+from graph_tools.reduction import update_edges, describe_graph, project_graph_return_adj
 from graph_tools.adj_aux import create_adj_matrix
 import logging
-from numpy import dot, sort
+from numpy import dot, arange
+from gc import collect
 
 id_type = 'id'
 prop_type = 'prop'
@@ -13,7 +13,7 @@ prop_type = 'prop'
 
 class Accumulator(object):
 
-    def __init__(self, id_type_str=False, prop_type_str=False):
+    def __init__(self, id_type_str=False, prop_type_str=False, max_list_len=1000):
 
         self.type = (id_type, prop_type)
         # is_a_string_type flags
@@ -26,6 +26,8 @@ class Accumulator(object):
 
         # x^int -> x^str (x int to x str dict) x ~ id, prop
         self.int_to_str_maps = {id_type: {}, prop_type: {}}
+
+        self.max_cite_len = max_list_len
 
         # prop^i : counts // keeps tracks of property frequencies
         self.prop_counts = Series()
@@ -84,6 +86,20 @@ class Accumulator(object):
         logging.info(' update_prop_counts() : a total of {0} counted'.format(self.prop_counts.sum()))
 
     def process_id_ids_list(self, in_list):
+        delta = self.max_cite_len
+        if len(in_list) > delta:
+            super_list = [in_list[k:k + delta] for k in arange(0, len(in_list), delta)]
+            logging.info(' process_id_ids_list() : len of super list {0}'.format(len(super_list)))
+            k = 0
+            for item in super_list:
+                logging.info('{0} {1}'.format(k, len(item)))
+                self.process_id_ids_list_(item)
+                collect()
+                k += 1
+        else:
+            self.process_id_ids_list_(in_list)
+
+    def process_id_ids_list_(self, in_list):
         """
 
         :param in_list: [(id, [ids])]
@@ -94,6 +110,7 @@ class Accumulator(object):
         thus all ids from in_list should already be processed
         by process_id_prop_list
         """
+
         # filter out pairs where id not in the set of ids
         in2 = filter(lambda x: x[0] in self.sets[id_type], in_list)
         # for every pair filter out the citing ids not in the set of ids
@@ -108,29 +125,29 @@ class Accumulator(object):
         logging.info(' process_id_ids_list() : filter out pairs where id not in the set of ids')
 
         m_ida_idb, ida, idb = create_adj_matrix(in4)
-        logging.info('m_ida_idb shape {0}'.format(m_ida_idb.shape))
+        logging.info(' process_id_ids_list() : m_ida_idb shape {0}'.format(m_ida_idb.shape))
 
         nodes_type_a = list(map(lambda x: (id_type, x), ida))
         nodes_type_b = list(map(lambda x: (id_type, x), idb))
 
         m_prop_a_to_ida = project_graph_return_adj(self.g_prop_to_id, nodes_type_a, transpose=True)
-        logging.info('m_prop_a_to_ida shape {0}'.format(m_prop_a_to_ida.shape))
+        logging.info(' process_id_ids_list() : m_prop_a_to_ida shape {0}'.format(m_prop_a_to_ida.shape))
         m_idb_to_prop_b = project_graph_return_adj(self.g_prop_to_id, nodes_type_b)
-        logging.info('m_idb_to_prop_b shape {0}'.format(m_idb_to_prop_b.shape))
+        logging.info(' process_id_ids_list() : m_idb_to_prop_b shape {0}'.format(m_idb_to_prop_b.shape))
         prop_a = list(map(lambda x: ('{0}_a'.format(x[0]), x[1]), m_prop_a_to_ida.index))
         prop_b = list(map(lambda x: ('{0}_b'.format(x[0]), x[1]), m_idb_to_prop_b.columns))
 
         cc = dot(m_prop_a_to_ida, dot(m_ida_idb, m_idb_to_prop_b))
         ser = DataFrame(cc, index=prop_a, columns=prop_b).stack()
+        logging.info(' ::: {0}'.format(sum(ser.isnull())))
         df_prepared = ser[ser != 0.0].reset_index().rename(columns={0: 'weight'})
         prop_a_to_prop_b = from_pandas_dataframe(df_prepared, 'level_0', 'level_1', 'weight')
-        logging.info('cc {0}'.format(cc.shape))
-
+        logging.info(' process_id_ids_list() : cc {0}'.format(cc.shape))
         update_edges(self.g_prop_to_prop, prop_a_to_prop_b)
         logging.info(' process_id_prop_list() : prop_a_to_prop_b composition')
         logging.info(describe_graph(prop_a_to_prop_b))
-
-        logging.info(' {0} nodes, {1} edges in prop_to_prop'.format(len(prop_a_to_prop_b.nodes()),
+        logging.info(describe_graph(self.g_prop_to_prop))
+        logging.info(' process_id_ids_list() : {0} nodes, {1} edges in prop_to_prop'.format(len(prop_a_to_prop_b.nodes()),
                                                                     len(prop_a_to_prop_b.edges())))
 
     def update_sets_maps(self, new_items, key):

@@ -22,6 +22,10 @@ if __name__ == "__main__":
                         default='./wos_parser.log',
                         help='Logfile path. Defaults to ./wos_parser.log')
 
+    parser.add_argument('-m', '--maxlistsize',
+                        default='1000',
+                        help='Logfile path. Defaults to ./wos_parser.log')
+
     args = parser.parse_args()
 
     if is_int(args.year):
@@ -29,8 +33,13 @@ if __name__ == "__main__":
     else:
         raise ValueError('year argument not an integer')
 
+    if is_int(args.maxlistsize):
+        maxlist_len = int(args.maxlistsize)
+    else:
+        raise ValueError('year argument not an integer')
+
     logging.basicConfig(filename=args.logfile, level=log_levels[args.verbosity],
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                         datefmt='%m-%d %H:%M')
 
-    main(args.sourcepath, args.destpath, year)
+    main(args.sourcepath, args.destpath, year, maxlist_len)

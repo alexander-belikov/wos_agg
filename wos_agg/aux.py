@@ -109,9 +109,9 @@ def gunzip_file(fname_in, fname_out):
             copyfileobj(f_in, f_out)
 
 
-def main(sourcepath, destpath, global_year):
+def main(sourcepath, destpath, global_year, max_list_len):
     cr = ChunkReader(sourcepath, 'good', 'pgz', global_year)
-    ac = Accumulator(id_type_str=True, prop_type_str=False)
+    ac = Accumulator(id_type_str=True, prop_type_str=False, max_list_len=max_list_len)
     ac_org = AccumulatorOrgs()
     logging.info(' : global year {0}'.format(global_year))
     raw_refs = 0
@@ -120,18 +120,18 @@ def main(sourcepath, destpath, global_year):
         batch = cr.pop()
         # implicit assumption : all record have the same year within the batch
         batch_year = batch[0]['date']['year']
-        logging.info(' : batch year {0}'.format(batch_year))
+        logging.info(' main() : batch year {0}'.format(batch_year))
         aj = pub2article_journal(batch)
-        logging.info(' : aj len {0}'.format(len(aj)))
+        logging.info(' main() : aj len {0}'.format(len(aj)))
         ac.process_id_prop_list(aj, batch_year != global_year)
 
         if batch_year == global_year:
             raw_refs_len = sum(map(lambda x: len(x['references']), batch))
             cite_data = pdata2citations(batch, delta=5, keep_issn=False)
-            logging.info(' : cite_data len {0}'.format(len(cite_data)))
+            logging.info(' main() : cite_data len {0}'.format(len(cite_data)))
             filtered_refs_len = sum(map(lambda x: len(x[1]), cite_data))
-            logging.info(' : cite_data len of raw refs {0}'.format(raw_refs_len))
-            logging.info(' : cite_data len of filtered refs {0}'.format(filtered_refs_len))
+            logging.info(' main() : cite_data len of raw refs {0}'.format(raw_refs_len))
+            logging.info(' main() : cite_data len of filtered refs {0}'.format(filtered_refs_len))
             ac.process_id_ids_list(cite_data)
             raw_refs += raw_refs_len
             filtered_refs += filtered_refs_len
