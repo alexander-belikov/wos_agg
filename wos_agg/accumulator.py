@@ -11,6 +11,7 @@ id_type = 'id'
 prop_type = 'prop'
 
 
+#TODO introduce obvious inheritance
 class Accumulator(object):
 
     def __init__(self, id_type_str=False, prop_type_str=False, max_list_len=1000):
@@ -215,43 +216,56 @@ class Accumulator(object):
                      'prop_counts'.format(self.prop_counts.shape[0], self.prop_counts.sum()))
 
 
-keys = ['country', 'city', 'organizations_pref', 'organizations', 'full_address']
+keys = ['year', 'country', 'city', 'organizations_pref', 'organizations', 'full_address']
 
 
 class AccumulatorOrgs(object):
+    keys = ['year', 'country', 'city', 'organizations_pref', 'organizations', 'full_address']
 
     def __init__(self):
-        self.set_orgs = set()
-        self.dict_orgs = dict()
-        self.g = Graph()
-
-    def update(self, inlist):
-        g = self.g
-        for x in inlist:
-            co, ci, orgp, org, add = x
-            if co not in g.nodes():
-                g.add_node(co)
-                if ci not in g.neighbors(co):
-                    g.add_edge(co, ci)
-                    if orgp not in g.neighbors(ci):
-                        g.add_edge(ci, orgp)
-                        if org not in g.neighbors(orgp):
-                            g.add_edge(orgp, org)
-                            if add not in g.neighbors(org):
-                                g.add_edge(org, add)
+        self.sets = {k: set() for k in keys}
+        self.int_to_str_maps = {k: dict() for k in keys}
+        self.str_to_int_maps = {k: dict() for k in keys}
+        self.paths_set = set()
+        self.type_str = dict(zip(keys, [True] * len(keys)))
+        self.type_str['year'] = False
+        self.i2key = dict(zip(list(range(len(keys))), keys))
 
     def info(self):
-        self.loggin('AccumulatorOrgs.info() : {0}'.format(describe_graph(self.g)))
+        for k in keys:
+            logging.info(' AccumulatorOrgs.info() : size of set {0} is {1}'.format(k, len(self.sets[k])))
+
+    def update_set_map(self, new_items, key):
+        outstanding = list(set(new_items) - self.sets[key])
+        if outstanding:
+            n = len(self.sets[key])
+            self.sets[key].update(outstanding)
+            if self.type_str[key]:
+                outstanding_ints = list(range(n, n + len(outstanding)))
+                int_to_str_outstanding = dict(zip(outstanding_ints, outstanding))
+                str_to_int_outstanding = dict(zip(outstanding, outstanding_ints))
+                self.int_to_str_maps[key].update(int_to_str_outstanding)
+                self.str_to_int_maps[key].update(str_to_int_outstanding)
+
+    def update_sets_maps(self, flat):
+        for j in range(len(keys)):
+            self.update_set_map(list(map(lambda x: x[j], flat)), self.i2key[j])
+
+    def accumulate_paths(self, flat):
+        for item in flat:
+            int_item = [self.str_to_int_maps[k][x]
+                        if self.type_str[k] else x for (k, x) in zip(keys, item)]
+            self.paths_set.update({tuple(int_item)})
 
     def process_acc(self, acc):
-        filtered_acc = filter(lambda x: 'addresses' in x.keys(), acc)
-        list_of_lists = map(lambda x: list(map(lambda y: (y['country'], y['city'],
-                                                          '|'.join(sorted(y['organizations_pref'])),
-                                                          '|'.join(sorted(y['organizations'])),
-                                                          y['full_address']), x['addresses'])), filtered_acc)
-        flat_list = [x for sublist in list_of_lists for x in sublist]
-        flat_list2 = [list(zip(keys, x)) for x in flat_list]
-        return flat_list2
-
-    def dump(self, fpath):
-        write_gpickle(self.g, fpath)
+        flat_list = []
+        for item in acc:
+            year = item['date']['year']
+            for addr in item['addresses']:
+                cnt = addr['country']
+                city = addr['city']
+                orgs_pref = tuple(sorted(addr['organizations_pref']))
+                orgs = tuple(sorted(addr['organizations']))
+                faddr = addr['full_address']
+                flat_list.append((year, cnt, city, orgs_pref, orgs, faddr))
+        return flat_list

@@ -137,7 +137,7 @@ def main(sourcepath, destpath, global_year, max_list_len):
             filtered_refs += filtered_refs_len
 
         flat_list = ac_org.process_acc(batch)
-        ac_org.update(flat_list)
+        ac_org.update(batch_year, flat_list)
         ac.info()
 
         logging.info(' main() : total raw refs {0}'.format(raw_refs))
@@ -147,6 +147,6 @@ def main(sourcepath, destpath, global_year, max_list_len):
     logging.info(' main() : citation matrix retrieved')
     ef, ai = calc_eigen_vec(zij, freq, alpha=0.85, eps=1e-6)
     logging.info(' main() : eigenfactor computed')
-    df_out = DataFrame(data=vstack([index, ef, ai]).T, columns=['issns', 'ef', 'ai'])
+    df_out = DataFrame(data=vstack([index, ef, ai]).T, columns=['issn', 'ef', 'ai'])
     df_out.to_csv(join(destpath, 'ef_ai_{0}.csv.gz'.format(global_year)), compression='gzip')
     ac_org.dump(join(destpath, 'orgs_{0}.pgz'.format(global_year)))
