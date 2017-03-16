@@ -135,9 +135,8 @@ def main(sourcepath, destpath, global_year, max_list_len):
             ac.process_id_ids_list(cite_data)
             raw_refs += raw_refs_len
             filtered_refs += filtered_refs_len
-
-        flat_list = ac_org.process_acc(batch)
-        ac_org.update(batch_year, flat_list)
+            # accumulate orgatinzation data
+            ac_org.process_acc(batch)
         ac.info()
 
         logging.info(' main() : total raw refs {0}'.format(raw_refs))
@@ -149,4 +148,4 @@ def main(sourcepath, destpath, global_year, max_list_len):
     logging.info(' main() : eigenfactor computed')
     df_out = DataFrame(data=vstack([index, ef, ai]).T, columns=['issn', 'ef', 'ai'])
     df_out.to_csv(join(destpath, 'ef_ai_{0}.csv.gz'.format(global_year)), compression='gzip')
-    ac_org.dump(join(destpath, 'orgs_{0}.pgz'.format(global_year)))
+    ac_org.dump(join(destpath, 'affs_{0}.pgz'.format(global_year)))

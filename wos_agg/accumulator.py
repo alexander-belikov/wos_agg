@@ -1,11 +1,13 @@
 from numpy import nan
 from pandas import DataFrame, Series
-from networkx import Graph, to_pandas_dataframe, write_gpickle, from_pandas_dataframe
+from networkx import Graph, to_pandas_dataframe, from_pandas_dataframe
 from graph_tools.reduction import update_edges, describe_graph, project_graph_return_adj
 from graph_tools.adj_aux import create_adj_matrix
 import logging
-from numpy import dot, arange
+from numpy import dot, arange, array
 from gc import collect
+import gzip
+import pickle
 
 id_type = 'id'
 prop_type = 'prop'
@@ -216,23 +218,21 @@ class Accumulator(object):
                      'prop_counts'.format(self.prop_counts.shape[0], self.prop_counts.sum()))
 
 
-keys = ['year', 'country', 'city', 'organizations_pref', 'organizations', 'full_address']
-
-
 class AccumulatorOrgs(object):
-    keys = ['year', 'country', 'city', 'organizations_pref', 'organizations', 'full_address']
 
     def __init__(self):
-        self.sets = {k: set() for k in keys}
-        self.int_to_str_maps = {k: dict() for k in keys}
-        self.str_to_int_maps = {k: dict() for k in keys}
+        self.keys = ['year', 'country', 'city',
+                     'organizations_pref', 'organizations', 'full_address']
+        self.sets = {k: set() for k in self.keys}
+        self.int_to_str_maps = {k: dict() for k in self.keys}
+        self.str_to_int_maps = {k: dict() for k in self.keys}
         self.paths_set = set()
-        self.type_str = dict(zip(keys, [True] * len(keys)))
+        self.type_str = dict(zip(self.keys, [True] * len(self.keys)))
         self.type_str['year'] = False
-        self.i2key = dict(zip(list(range(len(keys))), keys))
+        self.i2key = dict(zip(list(range(len(self.keys))), self.keys))
 
     def info(self):
-        for k in keys:
+        for k in self.keys:
             logging.info(' AccumulatorOrgs.info() : size of set {0} is {1}'.format(k, len(self.sets[k])))
 
     def update_set_map(self, new_items, key):
@@ -248,16 +248,16 @@ class AccumulatorOrgs(object):
                 self.str_to_int_maps[key].update(str_to_int_outstanding)
 
     def update_sets_maps(self, flat):
-        for j in range(len(keys)):
+        for j in range(len(self.keys)):
             self.update_set_map(list(map(lambda x: x[j], flat)), self.i2key[j])
 
     def accumulate_paths(self, flat):
         for item in flat:
             int_item = [self.str_to_int_maps[k][x]
-                        if self.type_str[k] else x for (k, x) in zip(keys, item)]
+                        if self.type_str[k] else x for (k, x) in zip(self.keys, item)]
             self.paths_set.update({tuple(int_item)})
 
-    def process_acc(self, acc):
+    def flatten_acc(self, acc):
         flat_list = []
         for item in acc:
             year = item['date']['year']
@@ -269,3 +269,17 @@ class AccumulatorOrgs(object):
                 faddr = addr['full_address']
                 flat_list.append((year, cnt, city, orgs_pref, orgs, faddr))
         return flat_list
+
+    def process_acc(self, acc):
+        flat = self.flatten_acc(acc)
+        self.update_sets_maps(flat)
+        self.accumulate_paths(flat)
+
+    def dump(self, fpath):
+        output = {'sets': self.sets,
+                  'maps': {'i2s': self.int_to_str_maps, 's2i': self.str_to_int_maps},
+                  'types': self.type_str,
+                  'paths': array(list(self.paths_set))}
+
+        with gzip.open(fpath, 'wb') as fp:
+            pickle.dump(output, fp)
