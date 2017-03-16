@@ -106,8 +106,8 @@ def pub2article_journal(pdata):
 def pub2issn_title(pdata):
 
     pdata_journals = filter(is_article, pdata)
-    pdata_journals = filter(lambda x: 'property' in x.keys(), pdata_journals)
-    pdata_journals = filter(lambda x: 'source_title' in x['property'].keys(), pdata_journals)
+    pdata_journals = filter(lambda x: 'properties' in x.keys(), pdata_journals)
+    pdata_journals = filter(lambda x: 'source_title' in x['properties'].keys(), pdata_journals)
     jt_data = list(map(lambda x: (x['properties']['issn_int'], x['properties']['source_title']), pdata_journals))
     return jt_data
 
