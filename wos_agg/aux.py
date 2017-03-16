@@ -103,6 +103,13 @@ def pub2article_journal(pdata):
     return aj_data
 
 
+def pub2issn_title(pdata):
+
+    pdata_journals = filter(is_article, pdata)
+    jt_data = list(map(lambda x: (x['properties']['issn_int'], x['properties']['source_title']), pdata_journals))
+    return jt_data
+
+
 def gunzip_file(fname_in, fname_out):
     with gzip.open(fname_in, 'rb') as f_in:
         with open(fname_out, 'wb') as f_out:
@@ -113,6 +120,7 @@ def main(sourcepath, destpath, global_year, max_list_len):
     cr = ChunkReader(sourcepath, 'good', 'pgz', global_year)
     ac = Accumulator(id_type_str=True, prop_type_str=False, max_list_len=max_list_len)
     ac_org = AccumulatorOrgs()
+    jt_dict = dict()
     logging.info(' : global year {0}'.format(global_year))
     raw_refs = 0
     filtered_refs = 0
@@ -125,6 +133,9 @@ def main(sourcepath, destpath, global_year, max_list_len):
         logging.info(' main() : aj len {0}'.format(len(aj)))
         ac.process_id_prop_list(aj, batch_year != global_year)
 
+        jt = pub2issn_title(batch)
+        jt_dict.update(jt)
+
         if batch_year == global_year:
             raw_refs_len = sum(map(lambda x: len(x['references']), batch))
             cite_data = pdata2citations(batch, delta=5, keep_issn=False)
@@ -135,7 +146,7 @@ def main(sourcepath, destpath, global_year, max_list_len):
             ac.process_id_ids_list(cite_data)
             raw_refs += raw_refs_len
             filtered_refs += filtered_refs_len
-            # accumulate orgatinzation data
+            # accumulate organization data
             ac_org.process_acc(batch)
         ac.info()
 
@@ -149,3 +160,5 @@ def main(sourcepath, destpath, global_year, max_list_len):
     df_out = DataFrame(data=vstack([index, ef, ai]).T, columns=['issn', 'ef', 'ai'])
     df_out.to_csv(join(destpath, 'ef_ai_{0}.csv.gz'.format(global_year)), compression='gzip')
     ac_org.dump(join(destpath, 'affs_{0}.pgz'.format(global_year)))
+    with gzip.open(join(destpath, 'jt_{0}.pgz'.format(global_year)), 'wb') as fp:
+        pickle.dump(jt_dict, fp)
