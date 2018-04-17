@@ -6,7 +6,7 @@ from gc import collect
 import logging
 
 
-class ChunkReader:
+class ChunkReader(object):
 
     def __init__(self, fpath, prefix, suffix, globar_year):
         self.fpath = fpath

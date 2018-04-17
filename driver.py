@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     parser.add_argument('-m', '--maxlistsize',
                         default='1000',
-                        help='Logfile path. Defaults to ./wos_parser.log')
+                        help='Maximum size for matrix multiplication part')
 
     args = parser.parse_args()
 

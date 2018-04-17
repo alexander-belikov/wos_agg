@@ -22,6 +22,6 @@ setup(
         "Topic :: Utilities",
         "License :: OSI Approved :: BSD License",
     ],
-    install_requires=['numpy>=1.8.1', 'pandas>=0.17.0', 'networkx>=1.11',
+    install_requires=['numpy>=1.8.1', 'pandas>=0.17.0', 'networkx>=2.1',
                       'python-Levenshtein']
 )

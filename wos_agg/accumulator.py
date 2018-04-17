@@ -1,6 +1,6 @@
 from numpy import nan
 from pandas import DataFrame, Series
-from networkx import Graph, to_pandas_dataframe, from_pandas_dataframe
+from networkx import Graph, to_pandas_adjacency, from_pandas_adjacency
 from graph_tools.reduction import update_edges, describe_graph, project_graph_return_adj
 from graph_tools.adj_aux import create_adj_matrix
 import logging
@@ -143,7 +143,7 @@ class Accumulator(object):
         cc = dot(m_prop_a_to_ida, dot(m_ida_idb, m_idb_to_prop_b))
         ser = DataFrame(cc, index=prop_a, columns=prop_b).stack()
         df_prepared = ser[ser != 0.0].reset_index().rename(columns={0: 'weight'})
-        prop_a_to_prop_b = from_pandas_dataframe(df_prepared, 'level_0', 'level_1', 'weight')
+        prop_a_to_prop_b = from_pandas_adjacency(df_prepared, 'level_0', 'level_1', 'weight')
         logging.info(' process_id_ids_list() : cc {0}'.format(cc.shape))
         update_edges(self.g_prop_to_prop, prop_a_to_prop_b)
         logging.info(' process_id_prop_list() : prop_a_to_prop_b composition')
@@ -176,7 +176,7 @@ class Accumulator(object):
     def g_props_to_df(self):
         logging.info(' in g_props_to_df() : describe prop to prop')
         logging.info(describe_graph(self.g_prop_to_prop))
-        df = to_pandas_dataframe(self.g_prop_to_prop)
+        df = to_pandas_adjacency(self.g_prop_to_prop)
         index_ = sorted(list(filter(lambda x: x[0] == prop_type + '_b', df.index)), key=lambda x: x[1])
         columns_ = sorted(list(filter(lambda x: x[0] == prop_type + '_a', df.columns)), key=lambda x: x[1])
 
@@ -219,6 +219,7 @@ class Accumulator(object):
 
 
 class AccumulatorOrgs(object):
+    # maybe to lower before saving strings
 
     def __init__(self):
         self.keys = ['year', 'country', 'city',
