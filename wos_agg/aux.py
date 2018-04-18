@@ -63,7 +63,7 @@ def soft_filter_year(refs, year, delta=None, filter_wos=True):
         filtered = refs
         if filter_wos:
             filtered = filter(lambda x: not filter_wos or x['uid'].startswith('WOS:'), refs)
-        # keep the ref if 'year is not available
+        # keep the ref if year is not available
         # or if delta is not provided or if it is provided
         # and year is greater then current year - delta
         filtered = filter(lambda x: ('year' not in x.keys() or
@@ -164,3 +164,43 @@ def main(sourcepath, destpath, global_year, max_list_len):
     ac_org.dump(join(destpath, 'affs_{0}.pgz'.format(global_year)))
     with gzip.open(join(destpath, 'jt_{0}.pgz'.format(global_year)), 'wb') as fp:
         pickle.dump(jt_dict, fp)
+
+
+def main_citations(sourcepath, destpath):
+    """
+    WIP
+    :param sourcepath:
+    :param destpath:
+    :return:
+    """
+    cr = ChunkReader(sourcepath, 'good', 'pgz')
+    ac = Accumulator(id_type_str=True, prop_type_str=False, max_list_len=max_list_len)
+    raw_refs = 0
+    filtered_refs = 0
+
+    while cr.not_empty():
+        batch = cr.pop()
+
+        raw_refs_len = sum(map(lambda x: len(x['references']), batch))
+        cite_data = pdata2citations(batch, delta=None, keep_issn=False)
+        year_data = [None if 'year' not in x['date'].keys() else x['date']['year'].keys() for x in batch]
+        month_data = [None if 'month' not in x['date'].keys() else x['date']['month'].keys() for x in batch]
+        day_data = [None if 'day' not in x['date'].keys() else x['date']['day'].keys() for x in batch]
+
+        logging.info(' main() : cite_data len {0}'.format(len(cite_data)))
+        filtered_refs_len = sum(map(lambda x: len(x[1]), cite_data))
+        logging.info(' main() : cite_data len of raw refs {0}'.format(raw_refs_len))
+        logging.info(' main() : cite_data len of filtered refs {0}'.format(filtered_refs_len))
+        ac.process_id_ids_list(cite_data)
+        raw_refs += raw_refs_len
+        filtered_refs += filtered_refs_len
+
+    zij, freq, index = ac.retrieve_zij_counts_index()
+    logging.info(' main() : citation matrix retrieved')
+    ef, ai = calc_eigen_vec(zij, freq, alpha=0.85, eps=1e-6)
+    logging.info(' main() : eigenfactor computed')
+    df_out = DataFrame(data=vstack([index, ef, ai]).T, columns=['issn', 'ef', 'ai'])
+    df_out.to_csv(join(destpath, 'ef_ai_{0}.csv.gz'.format(global_year)), compression='gzip')
+    # ac_org.dump(join(destpath, 'affs_{0}.pgz'.format(global_year)))
+    # with gzip.open(join(destpath, 'jt_{0}.pgz'.format(global_year)), 'wb') as fp:
+    #     pickle.dump(jt_dict, fp)

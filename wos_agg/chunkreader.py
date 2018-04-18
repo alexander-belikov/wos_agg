@@ -9,6 +9,14 @@ import logging
 class ChunkReader(object):
 
     def __init__(self, fpath, prefix, suffix, globar_year):
+        """
+            read files from fpath with files with globar_year read last
+
+        :param fpath: filepath
+        :param prefix: prefix of files
+        :param suffix: suffix of files
+        :param globar_year: year specifier of files
+        """
         self.fpath = fpath
         prefix_len = len(prefix)
         suffix_len = len(suffix)
@@ -43,6 +51,10 @@ class ChunkReader(object):
         return bool(self.files)
 
     def pop(self):
+        """
+        pop the current item
+        :return:
+        """
         collect()
         if self.files:
             f = self.files.pop()

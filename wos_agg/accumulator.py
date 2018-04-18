@@ -19,6 +19,7 @@ class Accumulator(object):
     def __init__(self, id_type_str=False, prop_type_str=False, max_list_len=1000):
 
         self.type = (id_type, prop_type)
+
         # is_a_string_type flags
         self.type_str = {id_type: id_type_str, prop_type: prop_type_str}
         # set of ids
@@ -44,6 +45,7 @@ class Accumulator(object):
         """
 
         :param in_list: [(id, prop)]
+        :param update_counts_flag:
         :return: None
         """
         new_ids = map(lambda x: x[0], in_list)
