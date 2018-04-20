@@ -286,3 +286,77 @@ class AccumulatorOrgs(object):
 
         with gzip.open(fpath, 'wb') as fp:
             pickle.dump(output, fp)
+
+
+class AccumulatorCite(object):
+    def __init__(self):
+        self.set_str_ids = set()
+        self.int_to_str_map = dict()
+        self.str_to_int_map = dict()
+        # key : wid // int  ; value : (year, month, date) // (int, int, int)
+        self.id_date = dict()
+        # key : wid // int  ; value : [wid] //[int]
+        self.id_cited_by = dict()
+
+    def info(self):
+        logging.info('AccumulatorCite.info() : size of set {0} is {1}'.format(len(self.set_str_ids)))
+
+    def update_set_map(self, new_items):
+        outstanding = list(set(new_items) - self.set_str_ids)
+        if outstanding:
+            n = len(self.set_str_ids)
+            self.set_str_ids.update(outstanding)
+            outstanding_ints = list(range(n, n + len(outstanding)))
+            int_to_str_outstanding = dict(zip(outstanding_ints, outstanding))
+            str_to_int_outstanding = dict(zip(outstanding, outstanding_ints))
+            self.int_to_str_map.update(int_to_str_outstanding)
+            self.str_to_int_map.update(str_to_int_outstanding)
+
+    def update_dates(self, items, item_dates, priority=True, check_int_ids=True):
+        if check_int_ids:
+            self.update_set_map(items)
+        items_int = [self.str_to_int_map[s] for s in items]
+        if priority:
+            # update inconditionally
+            # it is implied that item_dates contains triplets of year, month, day
+            oustanding_data_dict = dict(zip(items_int, item_dates))
+        else:
+            # update only if id in not in
+            outstanding = set(items_int) - set(self.id_date.keys())
+            oustanding_data_dict = dict([(item, date) for item, date
+                                         in zip(items_int, item_dates) if item in outstanding])
+        self.id_date.update(oustanding_data_dict)
+
+    def update_citations(self, cdata, check_int_ids=True, verbose=False):
+        if check_int_ids:
+            prim_ids = [item[0] for item in cdata]
+            ref_id_year_ss = [item[1] for item in cdata]
+            ref_ids = [ref_id for sublist in ref_id_year_ss for ref_id, y in sublist]
+            self.update_set_map(prim_ids + ref_ids)
+
+        for i_str, refs in cdata:
+            if verbose:
+                print(i_str, refs)
+            id_int = self.str_to_int_map[i_str]
+            refs_int = [self.str_to_int_map[j] for j, y in refs]
+
+            if verbose:
+                print(id_int, refs_int)
+            refs_new = [j for j in refs_int if j not in self.id_cited_by.keys()]
+            if verbose:
+                print(refs_new)
+            update_dict = dict(zip(refs_new, [{id_int}]*len(refs_new)))
+            refs_existing = [j for j in refs_int if j in self.id_cited_by.keys()]
+            update_dict_existing = {j: self.id_cited_by[j] | {id_int} for j in refs_existing}
+            self.id_cited_by.update(update_dict)
+            self.id_cited_by.update(update_dict_existing)
+
+    def dump(self, fpath):
+        output = {'set_wos_ids': self.set_str_ids,
+                  'maps': {'i2s': self.int_to_str_map, 's2i': self.str_to_int_map},
+                  'id_cited_by': self.id_cited_by,
+                  'id_date': self.id_date
+                  }
+
+        with gzip.open(fpath, 'wb') as fp:
+            pickle.dump(output, fp)

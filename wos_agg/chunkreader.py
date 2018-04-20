@@ -8,7 +8,7 @@ import logging
 
 class ChunkReader(object):
 
-    def __init__(self, fpath, prefix, suffix, globar_year):
+    def __init__(self, fpath, prefix, suffix, globar_year=None):
         """
             read files from fpath with files with globar_year read last
 
