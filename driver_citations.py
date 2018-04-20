@@ -19,24 +19,10 @@ if __name__ == "__main__":
                         default='./wos_parser.log',
                         help='Logfile path. Defaults to ./wos_parser.log')
 
-    parser.add_argument('-m', '--maxlistsize',
-                        default='1000',
-                        help='Maximum size for matrix multiplication part')
-
     args = parser.parse_args()
-
-    if is_int(args.year):
-        year = int(args.year)
-    else:
-        raise ValueError('year argument not an integer')
-
-    if is_int(args.maxlistsize):
-        maxlist_len = int(args.maxlistsize)
-    else:
-        raise ValueError('year argument not an integer')
 
     logging.basicConfig(filename=args.logfile, level=log_levels[args.verbosity],
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                         datefmt='%m-%d %H:%M')
 
-    main_citations(args.sourcepath, args.destpath, maxlist_len)
+    main_citations(args.sourcepath, args.destpath)
