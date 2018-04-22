@@ -351,6 +351,26 @@ class AccumulatorCite(object):
             self.id_cited_by.update(update_dict)
             self.id_cited_by.update(update_dict_existing)
 
+    def _update_citations(self, cdict):
+        update_dict = {k: (self.id_cited_by[k] | cdict[k]) if k in self.id_cited_by.keys()
+                       else cdict[k] for k, v in cdict.items()}
+        self.id_cited_by.update(update_dict)
+
+    def _update_dates(self, date_dict):
+        update_dict = {k: d for k, d in date_dict.items() if d[1] and d[2]}
+        self.id_date.update(update_dict)
+
+    def load(self, fpath):
+
+        with gzip.open(fpath, 'rb') as fp:
+            pack = pickle.load(fp)
+
+        self.set_str_ids = pack['set_wos_ids']
+        self.id_cited_by = pack['id_cited_by']
+        self.int_to_str_map = pack['maps']['i2s']
+        self.str_to_int_map = pack['maps']['s2i']
+        self.id_date = pack['id_date']
+
     def dump(self, fpath):
         output = {'set_wos_ids': self.set_str_ids,
                   'maps': {'i2s': self.int_to_str_map, 's2i': self.str_to_int_map},
@@ -360,3 +380,57 @@ class AccumulatorCite(object):
 
         with gzip.open(fpath, 'wb') as fp:
             pickle.dump(output, fp)
+
+
+    def update_with_pub_data(self, id_data, date_data):
+        year_data = [None if 'year' not in x.keys() else x['year'] for x in date_data]
+        month_data = [None if 'month' not in x.keys() else x['month'] for x in date_data]
+        day_data = [None if 'day' not in x.keys() else x['day'] for x in date_data]
+        self.update_dates(id_data, zip(year_data, month_data, day_data), False)
+
+    def update_with_cite_data(self, cite_data):
+        id_data = [x for x, y in cite_data]
+        # lists of refs (id_str, y)
+        ref_id_year_ss = [item[1] for item in cite_data]
+        ref_tuples_flat = [item for sublist in ref_id_year_ss for item in sublist]
+        ref_ids = [x for x, y in ref_tuples_flat]
+        # ref_ids = [ref_id for sublist in ref_id_year_ss for ref_id, y in sublist]
+        self.update_set_map(id_data + ref_ids)
+
+        # flat list of refs
+        ref_dates = [(y, None, None) for x, y in ref_tuples_flat]
+        self.update_dates(ref_ids, ref_dates, False, False)
+        self.update_citations(cite_data, False)
+
+    def merge(self, b):
+        """
+
+        :param a: self
+        :param b: AccumulatorCite obj that is merged onto a
+        :return:
+        """
+        # if isinstance(b, AccumulatorCite):
+        # a <= a, b
+        a = self
+        wids_new = b.set_str_ids - a.set_str_ids
+        a.update_set_map(wids_new)
+
+        int_ids_b = list(b.int_to_str_map.keys())
+
+        int_int_map_ba = {ib: a.str_to_int_map[b.int_to_str_map[ib]] for ib in int_ids_b}
+
+        id_cited_by_conv = {int_int_map_ba[k]: set([int_int_map_ba[x] for x in list(v)])
+                            for k, v in b.id_cited_by.items()}
+        a._update_citations(id_cited_by_conv)
+
+        print(int_int_map_ba)
+
+        id_date_conv = {int_int_map_ba[k]: d for k, d in b.id_date.items()}
+
+        print(id_date_conv)
+        a._update_dates(id_date_conv)
+
+        return self
+        # else:
+        #     raise TypeError('merge() : argument of type AccumulatorCite expected')
+
