@@ -1,6 +1,6 @@
 import argparse
 import logging
-from wos_agg.aux import main_citations, log_levels, is_int
+from wos_agg.aux import main_citations, log_levels, main_merge
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -19,10 +19,19 @@ if __name__ == "__main__":
                         default='./wos_parser.log',
                         help='Logfile path. Defaults to ./wos_parser.log')
 
+    parser.add_argument('-m', '--mode',
+                        default='cite',
+                        help='mode can be a) cite, b) merge')
+
     args = parser.parse_args()
 
     logging.basicConfig(filename=args.logfile, level=log_levels[args.verbosity],
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                         datefmt='%m-%d %H:%M')
+    if args.mode == 'cite':
+        main_citations(args.sourcepath, args.destpath)
+    elif args.mode == 'merge':
+        main_merge(args.sourcepath, args.destpath)
+    else:
+        logging.info('exiting driver_citations flow without action ...')
 
-    main_citations(args.sourcepath, args.destpath)

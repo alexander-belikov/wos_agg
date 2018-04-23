@@ -1,6 +1,7 @@
 import pickle
 import logging
 import gzip
+from pympler.asizeof import asizeof
 from shutil import copyfileobj
 from os import listdir
 from os.path import isfile, join
@@ -9,6 +10,7 @@ from numpy import vstack
 from .chunkreader import ChunkReader
 from .accumulator import Accumulator, AccumulatorOrgs, AccumulatorCite
 from graph_tools.ef import calc_eigen_vec
+from sys import getsizeof
 
 log_levels = {
     "DEBUG": logging.DEBUG, "INFO": logging.INFO,
@@ -175,7 +177,6 @@ def main(sourcepath, destpath, global_year, max_list_len):
 
 def main_citations(sourcepath, destpath):
     """
-    WIP
     :param sourcepath:
     :param destpath:
     :return:
@@ -195,32 +196,46 @@ def main_citations(sourcepath, destpath):
         date_data = [x['date'] for x in batch]
         ag.update_with_pub_data(id_data, date_data)
 
-        # year_data = [None if 'year' not in x['date'].keys() else x['date']['year'] for x in batch]
-        # month_data = [None if 'month' not in x['date'].keys() else x['date']['month'] for x in batch]
-        # day_data = [None if 'day' not in x['date'].keys() else x['date']['day'] for x in batch]
-        #
-        # # lists of refs (id_str, y)
-        # ref_id_year_ss = [item[1] for item in cite_data]
-        # ref_tuples_flat = [item for sublist in ref_id_year_ss for item in sublist]
-        # ref_ids = [x for x, y in ref_tuples_flat]
-        # # ref_ids = [ref_id for sublist in ref_id_year_ss for ref_id, y in sublist]
-        # ag.update_set_map(id_data + ref_ids)
-        #
-        # ag.update_dates(id_data, zip(year_data, month_data, day_data), False)
-        #
-        # # flat list of refs
-        # ref_dates = [(y, None, None) for x, y in ref_tuples_flat]
-        # ag.update_dates(ref_ids, ref_dates, False, False)
-        #
-        # ag.update_citations(cite_data, False)
-
         raw_refs_len = sum(map(lambda x: len(x['references']), batch))
 
-        logging.info(' main() : cite_data len {0}'.format(len(cite_data)))
+        logging.info(' main_citations() : cite_data len {0}'.format(len(cite_data)))
         filtered_refs_len = sum(map(lambda x: len(x[1]), cite_data))
-        logging.info(' main() : cite_data len of raw refs {0}'.format(raw_refs_len))
-        logging.info(' main() : cite_data len of filtered refs {0}'.format(filtered_refs_len))
+        logging.info(' main_citations() : cite_data len of raw refs {0}'.format(raw_refs_len))
+        logging.info(' main_citations() : cite_data len of filtered refs {0}'.format(filtered_refs_len))
         raw_refs += raw_refs_len
         filtered_refs += filtered_refs_len
 
     ag.dump(join(destpath, 'cite_pack.pgz'))
+
+
+def main_merge(sourcepath, destpath):
+    """
+    :param sourcepath:
+    :param destpath:
+    :return:
+    """
+    suffix = 'pgz'
+    suffix_len = len(suffix)
+    prefix = 'cite'
+    prefix_len = len(prefix)
+    fpath = sourcepath
+
+    files = [f for f in listdir(fpath) if isfile(join(fpath, f)) and
+             (f[-suffix_len:] == suffix and f[:prefix_len] == prefix)]
+
+    logging.info(' files list: {0}'.format(files))
+    ac_agg = AccumulatorCite()
+
+    while files:
+        f = files.pop()
+        ac = AccumulatorCite()
+        ac.load(join(fpath, f))
+        ac_size = asizeof(ac)/1024**2
+        ac_agg_size = asizeof(ac_agg)/1024**2
+        logging.info(' main_merge() : merging {0}'.format(f))
+        logging.info(' main_merge() : ac size {0:.1f} Mb, ac_agg size {0:.1f} Mb'.format(ac_size, ac_agg_size))
+        if ac_agg_size > 5e4:
+            break
+        ac_agg.merge(ac)
+
+    ac_agg.dump(join(destpath, 'all_cite_pack.pgz'))

@@ -357,7 +357,10 @@ class AccumulatorCite(object):
         self.id_cited_by.update(update_dict)
 
     def _update_dates(self, date_dict):
-        update_dict = {k: d for k, d in date_dict.items() if d[1] and d[2]}
+        update_keys = set([k for k, d in date_dict.items() if d[1] and d[2]])
+        full_date_present = set([k for k, d in self.id_date.items() if d[1] and d[2]])
+        update_keys2 = (set(date_dict.keys()) - update_keys) - full_date_present
+        update_dict = {k: date_dict[k] for k in list(update_keys2)}
         self.id_date.update(update_dict)
 
     def load(self, fpath):
@@ -380,7 +383,6 @@ class AccumulatorCite(object):
 
         with gzip.open(fpath, 'wb') as fp:
             pickle.dump(output, fp)
-
 
     def update_with_pub_data(self, id_data, date_data):
         year_data = [None if 'year' not in x.keys() else x['year'] for x in date_data]
@@ -423,11 +425,8 @@ class AccumulatorCite(object):
                             for k, v in b.id_cited_by.items()}
         a._update_citations(id_cited_by_conv)
 
-        print(int_int_map_ba)
-
         id_date_conv = {int_int_map_ba[k]: d for k, d in b.id_date.items()}
 
-        print(id_date_conv)
         a._update_dates(id_date_conv)
 
         return self
