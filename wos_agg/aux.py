@@ -234,8 +234,10 @@ def main_merge(sourcepath, destpath):
         ac_agg_size = asizeof(ac_agg)/1024**2
         logging.info(' main_merge() : merging {0}'.format(f))
         logging.info(' main_merge() : ac size {0:.1f} Mb, ac_agg size {0:.1f} Mb'.format(ac_size, ac_agg_size))
-        if ac_agg_size > 5e4:
+        if ac_agg_size > 3.00e5:
+            logging.info(' main_merge() : ac_agg_size > 300 Gb - exiting...')
             break
+
         ac_agg.merge(ac)
 
     ac_agg.dump(join(destpath, 'all_cite_pack.pgz'))
