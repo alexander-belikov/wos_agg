@@ -233,7 +233,7 @@ def main_merge(sourcepath, destpath, n_processes=2):
         while len(acs) > 1:
             bnd = min(len(acs), 2*n_processes)//2
             acs_merge, acs_untouched = acs[:2*bnd], acs[2*bnd:]
-            logging.info('main_acs() : len acs to merge : {0} leftover len : {1}', format(len(acs_merge),
+            logging.info('main_acs() : len acs to merge : {0} leftover len : {1}'.format(len(acs_merge),
                                                                                           len(acs_untouched)))
             acs_merge_pairs = zip(acs_merge[::2], acs_merge[1::2])
             func = partial(merge_acs)
