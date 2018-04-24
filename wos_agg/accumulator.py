@@ -370,8 +370,8 @@ class AccumulatorCite(object):
     def load(self, fpath=None, economical_mode=True):
         self.economical_mode = economical_mode
         if fpath:
-            self.fpath = fpath
-        with gzip.open(self.fpath, 'rb') as fp:
+            self.fname = fpath
+        with gzip.open(self.fname, 'rb') as fp:
             pack = pickle.load(fp)
 
         self.set_str_ids = pack['set_wos_ids']
