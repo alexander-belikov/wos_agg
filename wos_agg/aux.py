@@ -225,7 +225,7 @@ def main_merge(sourcepath, destpath, n_processes=2):
     files = sorted([f for f in listdir(fpath) if isfile(join(fpath, f)) and
                     (f[-suffix_len:] == suffix and f[:prefix_len] == prefix)])[::-1]
 
-    logging.info(' files list: {0}'.format(files))
+    logging.info(' main_acs() : files list: {0}'.format(files))
 
     acs = [AccumulatorCite(join(fpath, f)) for f in files]
 
@@ -233,6 +233,8 @@ def main_merge(sourcepath, destpath, n_processes=2):
         while len(acs) > 1:
             bnd = min(len(acs), 2*n_processes)//2
             acs_merge, acs_untouched = acs[:2*bnd], acs[2*bnd:]
+            logging.info('main_acs() : len acs to merge : {0} leftover len : {1}', format(len(acs_merge),
+                                                                                          len(acs_untouched)))
             acs_merge_pairs = zip(acs_merge[::2], acs_merge[1::2])
             func = partial(merge_acs)
             acs_merge = p.map(func, acs_merge_pairs)
@@ -246,10 +248,10 @@ def merge_acs(pair):
     a, b = pair
     a.load()
     size_a = asizeof(a) / 1024 ** 2
-    logging.info(' main_merge() : {0} ac a size {1:.1f} Mb'.format(a.fname, size_a))
+    logging.info(' main_acs() : {0} ac a size {1:.1f} Mb'.format(a.fname, size_a))
     b.load()
     size_b = asizeof(b) / 1024 ** 2
-    logging.info(' main_merge() : {0} ac a size {1:.1f} Mb'.format(b.fname, size_b))
+    logging.info(' main_acs() : {0} ac a size {1:.1f} Mb'.format(b.fname, size_b))
     a.merge(b)
     del b
     return a
