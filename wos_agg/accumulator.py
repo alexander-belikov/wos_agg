@@ -430,7 +430,7 @@ class AccumulatorCite(object):
         wids_new = b.set_str_ids - a.set_str_ids
         a.update_set_map(wids_new)
 
-        int_ids_b = list(b.int_to_str_map.keys())
+        int_ids_b = list(b.str_to_int_map.values())
 
         int_int_map_ba = {ib: a.str_to_int_map[b.int_to_str_map[ib]] for ib in int_ids_b}
 
