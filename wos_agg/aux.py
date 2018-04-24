@@ -3,13 +3,16 @@ import logging
 import gzip
 from pympler.asizeof import asizeof
 from shutil import copyfileobj
-from os import listdir
+from os import listdir, rename, sysconf
 from os.path import isfile, join
 from pandas import DataFrame
 from numpy import vstack
 from .chunkreader import ChunkReader
 from .accumulator import Accumulator, AccumulatorOrgs, AccumulatorCite
 from graph_tools.ef import calc_eigen_vec
+import pathos.multiprocessing as mp
+from re import findall
+from functools import partial
 import gc
 
 log_levels = {
@@ -216,42 +219,58 @@ def main_merge(sourcepath, destpath, n_processes=2):
     """
     suffix = 'pgz'
     suffix_len = len(suffix)
-    prefix = 'cite'
+    ls = suffix_len
+    prefix = 'cite_pack'
     prefix_len = len(prefix)
     fpath = sourcepath
-    import pathos.multiprocessing as mp
-    from functools import partial
+    mem_bytes = sysconf('SC_PAGE_SIZE') * sysconf('SC_PHYS_PAGES')  # e.g. 4015976448
+    mem_gib = mem_bytes / 1024 ** 3
 
     files = sorted([f for f in listdir(fpath) if isfile(join(fpath, f)) and
                     (f[-suffix_len:] == suffix and f[:prefix_len] == prefix)])[::-1]
 
+    files = [(join(fpath, f), 10) for f in files]
     logging.info(' main_acs() : files list: {0}'.format(files))
 
-    acs = [AccumulatorCite(join(fpath, f)) for f in files]
+    while len(files) > 1:
+        bnd = min(len(files), 2*n_processes)//2
+        fname_merge, fname_untouched = files[:2*bnd], files[2*bnd:]
+        logging.info('main_acs() : len acs to merge : {0} leftover len : {1}'.format(len(fname_merge),
+                                                                                     len(fname_untouched)))
+        fname_pairs = zip(fname_merge[::2], fname_merge[1::2])
+        fname_triplet = [(fa, fb,
+                         fa[0][:-ls] + findall(r'{0}(.*){1}'.format(prefix, suffix), fb[0])[0].lstrip('.')
+                         + suffix) for fa, fb in fname_pairs]
+        func = partial(merge_acs)
 
-    with mp.Pool(n_processes) as p:
-        while len(acs) > 1:
-            bnd = min(len(acs), 2*n_processes)//2
-            acs_merge, acs_untouched = acs[:2*bnd], acs[2*bnd:]
-            logging.info('main_acs() : len acs to merge : {0} leftover len : {1}'.format(len(acs_merge),
-                                                                                          len(acs_untouched)))
-            acs_merge_pairs = zip(acs_merge[::2], acs_merge[1::2])
-            func = partial(merge_acs)
-            acs_merge = p.map(func, acs_merge_pairs)
-            acs = acs_merge + acs_untouched
-            gc.collect()
+        expected_mem_occupation = sum([s for _, s in fname_merge])
+        n_proc_adj = int(n_processes * mem_gib * 0.8 / expected_mem_occupation)
+        n_proc = min(n_processes, n_proc_adj)
+        with mp.Pool(n_proc) as p:
+            fname_merge = p.map(func, fname_triplet)
+        files = fname_merge + fname_untouched
+        gc.collect()
 
-    acs[0].dump(join(destpath, 'all_cite_pack.pgz'))
+    rename(files[0], join(fpath, 'all_cite_pack.pgz'))
 
 
-def merge_acs(pair):
-    a, b = pair
+def merge_acs(fname_triplet):
+    fa_full, fb_full, fnew = fname_triplet
+    fa, _ = fa_full
+    fb, _ = fb_full
+    a = AccumulatorCite(fa)
+    b = AccumulatorCite(fb)
     a.load()
-    size_a = asizeof(a) / 1024 ** 2
-    logging.info(' main_acs() : {0} ac a size {1:.1f} Mb'.format(a.fname, size_a))
+    size_a = asizeof(a) / 1024 ** 3
+    logging.info(' main_acs() : {0} a size {1:.1f} Gb'.format(a.fname, size_a))
     b.load()
-    size_b = asizeof(b) / 1024 ** 2
-    logging.info(' main_acs() : {0} ac a size {1:.1f} Mb'.format(b.fname, size_b))
+    size_b = asizeof(b) / 1024 ** 3
+    logging.info(' main_acs() : {0} b size {1:.1f} Gb'.format(b.fname, size_b))
     a.merge(b)
+    size_new = asizeof(a) / 1024 ** 3
+    logging.info(' main_acs() : merged and b size {1:.1f} Gb'.format(size_new))
     del b
-    return a
+    a.dump(fnew)
+    del a
+    gc.collect()
+    return fnew, size_new
