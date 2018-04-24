@@ -245,11 +245,11 @@ def main_merge(sourcepath, destpath, n_processes=2):
 def merge_acs(pair):
     a, b = pair
     a.load()
-    ac_size_a = asizeof(a) / 1024 ** 2
-    logging.info(' main_merge() : {0} ac a size {0:.1f} Mb'.format(a.fname, ac_size_a))
+    size_a = asizeof(a) / 1024 ** 2
+    logging.info(' main_merge() : {0} ac a size {1:.1f} Mb'.format(a.fname, size_a))
     b.load()
-    ac_size_b = asizeof(b) / 1024 ** 2
-    logging.info(' main_merge() : {0} ac a size {0:.1f} Mb'.format(b.fname, ac_size_b))
+    size_b = asizeof(b) / 1024 ** 2
+    logging.info(' main_merge() : {0} ac a size {1:.1f} Mb'.format(b.fname, size_b))
     a.merge(b)
     del b
     return a
