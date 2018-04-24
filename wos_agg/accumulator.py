@@ -432,6 +432,8 @@ class AccumulatorCite(object):
 
         int_ids_b = list(b.str_to_int_map.values())
 
+        b.int_to_str_map = {k: v for v, k in b.str_to_int_map.items()}
+
         int_int_map_ba = {ib: a.str_to_int_map[b.int_to_str_map[ib]] for ib in int_ids_b}
 
         id_cited_by_conv = {int_int_map_ba[k]: set([int_int_map_ba[x] for x in list(v)])
