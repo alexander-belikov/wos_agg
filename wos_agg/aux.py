@@ -10,7 +10,7 @@ from numpy import vstack
 from .chunkreader import ChunkReader
 from .accumulator import Accumulator, AccumulatorOrgs, AccumulatorCite
 from graph_tools.ef import calc_eigen_vec
-from sys import getsizeof
+import gc
 
 log_levels = {
     "DEBUG": logging.DEBUG, "INFO": logging.INFO,
@@ -208,7 +208,7 @@ def main_citations(sourcepath, destpath):
     ag.dump(join(destpath, 'cite_pack.pgz'))
 
 
-def main_merge(sourcepath, destpath):
+def main_merge(sourcepath, destpath, n_processes=2):
     """
     :param sourcepath:
     :param destpath:
@@ -219,25 +219,37 @@ def main_merge(sourcepath, destpath):
     prefix = 'cite'
     prefix_len = len(prefix)
     fpath = sourcepath
+    import pathos.multiprocessing as mp
+    from functools import partial
 
-    files = [f for f in listdir(fpath) if isfile(join(fpath, f)) and
-             (f[-suffix_len:] == suffix and f[:prefix_len] == prefix)]
+    files = sorted([f for f in listdir(fpath) if isfile(join(fpath, f)) and
+                    (f[-suffix_len:] == suffix and f[:prefix_len] == prefix)])[::-1]
 
     logging.info(' files list: {0}'.format(files))
-    ac_agg = AccumulatorCite()
 
-    while files:
-        f = files.pop()
-        ac = AccumulatorCite()
-        ac.load(join(fpath, f))
-        ac_size = asizeof(ac)/1024**2
-        ac_agg_size = asizeof(ac_agg)/1024**2
-        logging.info(' main_merge() : merging {0}'.format(f))
-        logging.info(' main_merge() : ac size {0:.1f} Mb, ac_agg size {0:.1f} Mb'.format(ac_size, ac_agg_size))
-        if ac_agg_size > 3.00e5:
-            logging.info(' main_merge() : ac_agg_size > 300 Gb - exiting...')
-            break
+    acs = [AccumulatorCite(join(fpath, f)) for f in files]
 
-        ac_agg.merge(ac)
+    with mp.Pool(n_processes) as p:
+        while len(acs) > 1:
+            bnd = min(len(acs), 2*n_processes)//2
+            acs_merge, acs_untouched = acs[:2*bnd], acs[2*bnd:]
+            acs_merge_pairs = zip(acs_merge[::2], acs_merge[1::2])
+            func = partial(merge_acs)
+            acs_merge = p.map(func, acs_merge_pairs)
+            acs = acs_merge + acs_untouched
+            gc.collect()
 
-    ac_agg.dump(join(destpath, 'all_cite_pack.pgz'))
+    acs[0].dump(join(destpath, 'all_cite_pack.pgz'))
+
+
+def merge_acs(pair):
+    a, b = pair
+    a.load()
+    ac_size_a = asizeof(a) / 1024 ** 2
+    logging.info(' main_merge() : {0} ac a size {0:.1f} Mb'.format(a.fname, ac_size_a))
+    b.load()
+    ac_size_b = asizeof(b) / 1024 ** 2
+    logging.info(' main_merge() : {0} ac a size {0:.1f} Mb'.format(b.fname, ac_size_b))
+    a.merge(b)
+    del b
+    return a

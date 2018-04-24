@@ -289,7 +289,7 @@ class AccumulatorOrgs(object):
 
 
 class AccumulatorCite(object):
-    def __init__(self):
+    def __init__(self, fname=None, economical_mode=True):
         self.set_str_ids = set()
         self.int_to_str_map = dict()
         self.str_to_int_map = dict()
@@ -297,6 +297,9 @@ class AccumulatorCite(object):
         self.id_date = dict()
         # key : wid // int  ; value : [wid] //[int]
         self.id_cited_by = dict()
+        self.economical_mode = economical_mode
+        self.loaded = False
+        self.fname = fname
 
     def info(self):
         logging.info('AccumulatorCite.info() : size of set {0} is {1}'.format(len(self.set_str_ids)))
@@ -307,10 +310,11 @@ class AccumulatorCite(object):
             n = len(self.set_str_ids)
             self.set_str_ids.update(outstanding)
             outstanding_ints = list(range(n, n + len(outstanding)))
-            int_to_str_outstanding = dict(zip(outstanding_ints, outstanding))
             str_to_int_outstanding = dict(zip(outstanding, outstanding_ints))
-            self.int_to_str_map.update(int_to_str_outstanding)
             self.str_to_int_map.update(str_to_int_outstanding)
+            if not self.economical_mode:
+                int_to_str_outstanding = dict(zip(outstanding_ints, outstanding))
+                self.int_to_str_map.update(int_to_str_outstanding)
 
     def update_dates(self, items, item_dates, priority=True, check_int_ids=True):
         if check_int_ids:
@@ -363,23 +367,31 @@ class AccumulatorCite(object):
         update_dict = {k: date_dict[k] for k in list(update_keys2)}
         self.id_date.update(update_dict)
 
-    def load(self, fpath):
-
-        with gzip.open(fpath, 'rb') as fp:
+    def load(self, fpath=None, economical_mode=True):
+        self.economical_mode = economical_mode
+        self.fpath = fpath
+        with gzip.open(self.fpath, 'rb') as fp:
             pack = pickle.load(fp)
 
         self.set_str_ids = pack['set_wos_ids']
         self.id_cited_by = pack['id_cited_by']
-        self.int_to_str_map = pack['maps']['i2s']
+        if not self.economical_mode:
+            self.int_to_str_map = pack['maps']['i2s']
         self.str_to_int_map = pack['maps']['s2i']
         self.id_date = pack['id_date']
+        self.loaded = True
 
-    def dump(self, fpath):
+    def dump(self, fpath, economical_mode=True):
+        self.economical_mode = economical_mode
+
         output = {'set_wos_ids': self.set_str_ids,
-                  'maps': {'i2s': self.int_to_str_map, 's2i': self.str_to_int_map},
+                  'maps': {'s2i': self.str_to_int_map},
                   'id_cited_by': self.id_cited_by,
                   'id_date': self.id_date
                   }
+
+        if not self.economical_mode:
+            output['maps']['i2s'] = self.int_to_str_map
 
         with gzip.open(fpath, 'wb') as fp:
             pickle.dump(output, fp)
@@ -430,6 +442,4 @@ class AccumulatorCite(object):
         a._update_dates(id_date_conv)
 
         return self
-        # else:
-        #     raise TypeError('merge() : argument of type AccumulatorCite expected')
 

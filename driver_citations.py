@@ -1,6 +1,7 @@
 import argparse
 import logging
 from wos_agg.aux import main_citations, log_levels, main_merge
+import sys
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -16,22 +17,39 @@ if __name__ == "__main__":
                         help='set level of verbosity, DEBUG, INFO, WARNING, ERROR')
 
     parser.add_argument('-l', '--logfile',
-                        default='./wos_parser.log',
-                        help='Logfile path. Defaults to ./wos_parser.log')
+                        default='STDOUT',
+                        help='Logfile path. Defaults to STDOUT')
 
     parser.add_argument('-m', '--mode',
                         default='cite',
                         help='mode can be a) cite, b) merge')
+
+    parser.add_argument('-n', '--nproc',
+                        default=1, type=int,
+                        help='number of threads')
 
     args = parser.parse_args()
 
     logging.basicConfig(filename=args.logfile, level=log_levels[args.verbosity],
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                         datefmt='%m-%d %H:%M')
+
+    log = logging.getLogger()
+
+    if args.logfile == 'STDOUT':
+        ch = logging.StreamHandler(sys.stdout)
+    else:
+        ch = logging.StreamHandler(open(args.logfile, 'w'))
+
+    ch.setLevel(log_levels[args.verbosity])
+    formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+    ch.setFormatter(formatter)
+    log.addHandler(ch)
+
     if args.mode == 'cite':
         main_citations(args.sourcepath, args.destpath)
     elif args.mode == 'merge':
-        main_merge(args.sourcepath, args.destpath)
+        main_merge(args.sourcepath, args.destpath, args.nproc)
     else:
         logging.info('exiting driver_citations flow without action ...')
 
