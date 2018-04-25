@@ -235,7 +235,7 @@ def main_merge(sourcepath, destpath, n_processes=2):
     while len(files) > 1:
         bnd = min(len(files), 2*n_processes)//2
         fname_merge, fname_untouched = files[:2*bnd], files[2*bnd:]
-        logging.info('main_acs() : len acs to merge : {0} leftover len : {1}'.format(len(fname_merge),
+        logging.info('main_merge() : len acs to merge : {0} leftover len : {1}'.format(len(fname_merge),
                                                                                      len(fname_untouched)))
         fname_pairs = zip(fname_merge[::2], fname_merge[1::2])
         fname_triplet = [(fa, fb,
@@ -250,8 +250,8 @@ def main_merge(sourcepath, destpath, n_processes=2):
             fname_merge = p.map(func, fname_triplet)
         files = fname_merge + fname_untouched
         gc.collect()
-
-    rename(files[0], join(fpath, 'all_cite_pack.pgz'))
+    logging.info(' main_merge() : {0} {1}'.format(files[0][0], files[0][1]))
+    rename(files[0][0], join(destpath, 'all_cite_pack.pgz'))
 
 
 def merge_acs(fname_triplet):
