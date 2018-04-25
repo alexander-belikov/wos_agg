@@ -28,6 +28,10 @@ if __name__ == "__main__":
                         default=1, type=int,
                         help='number of threads')
 
+    parser.add_argument('-g', '--max-gb-pickle',
+                        default=20, type=float,
+                        help='max size of intermediate pickle in Gb')
+
     args = parser.parse_args()
 
     logging.basicConfig(filename=args.logfile, level=log_levels[args.verbosity],
@@ -49,7 +53,7 @@ if __name__ == "__main__":
     if args.mode == 'cite':
         main_citations(args.sourcepath, args.destpath)
     elif args.mode == 'merge':
-        main_merge(args.sourcepath, args.destpath, args.nproc)
+        main_merge(args.sourcepath, args.destpath, args.nproc, args.max_gb_pickle)
     else:
         logging.info('exiting driver_citations flow without action ...')
 

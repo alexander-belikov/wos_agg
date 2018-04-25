@@ -8,6 +8,7 @@ from numpy import dot, arange, array
 from gc import collect
 import gzip
 import pickle
+import gc
 
 id_type = 'id'
 prop_type = 'prop'
@@ -315,6 +316,7 @@ class AccumulatorCite(object):
             if not self.economical_mode:
                 int_to_str_outstanding = dict(zip(outstanding_ints, outstanding))
                 self.int_to_str_map.update(int_to_str_outstanding)
+        gc.collect()
 
     def update_dates(self, items, item_dates, priority=True, check_int_ids=True):
         if check_int_ids:
@@ -330,6 +332,8 @@ class AccumulatorCite(object):
             oustanding_data_dict = dict([(item, date) for item, date
                                          in zip(items_int, item_dates) if item in outstanding])
         self.id_date.update(oustanding_data_dict)
+        gc.collect()
+
 
     def update_citations(self, cdata, check_int_ids=True, verbose=False):
         if check_int_ids:
@@ -354,11 +358,13 @@ class AccumulatorCite(object):
             update_dict_existing = {j: self.id_cited_by[j] | {id_int} for j in refs_existing}
             self.id_cited_by.update(update_dict)
             self.id_cited_by.update(update_dict_existing)
+        gc.collect()
 
     def _update_citations(self, cdict):
         update_dict = {k: (self.id_cited_by[k] | cdict[k]) if k in self.id_cited_by.keys()
                        else cdict[k] for k, v in cdict.items()}
         self.id_cited_by.update(update_dict)
+        gc.collect()
 
     def _update_dates(self, date_dict):
         update_keys = set([k for k, d in date_dict.items() if d[1] and d[2]])
@@ -366,6 +372,7 @@ class AccumulatorCite(object):
         update_keys2 = (set(date_dict.keys()) - update_keys) - full_date_present
         update_dict = {k: date_dict[k] for k in list(update_keys2)}
         self.id_date.update(update_dict)
+        gc.collect()
 
     def load(self, fpath=None, economical_mode=True):
         self.economical_mode = economical_mode
@@ -402,6 +409,7 @@ class AccumulatorCite(object):
         month_data = [None if 'month' not in x.keys() else x['month'] for x in date_data]
         day_data = [None if 'day' not in x.keys() else x['day'] for x in date_data]
         self.update_dates(id_data, zip(year_data, month_data, day_data), False)
+        gc.collect()
 
     def update_with_cite_data(self, cite_data):
         id_data = [x for x, y in cite_data]
@@ -416,6 +424,7 @@ class AccumulatorCite(object):
         ref_dates = [(y, None, None) for x, y in ref_tuples_flat]
         self.update_dates(ref_ids, ref_dates, False, False)
         self.update_citations(cite_data, False)
+        gc.collect()
 
     def merge(self, b):
         """
