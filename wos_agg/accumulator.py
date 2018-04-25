@@ -334,7 +334,6 @@ class AccumulatorCite(object):
         self.id_date.update(oustanding_data_dict)
         gc.collect()
 
-
     def update_citations(self, cdata, check_int_ids=True, verbose=False):
         if check_int_ids:
             prim_ids = [item[0] for item in cdata]
@@ -383,11 +382,12 @@ class AccumulatorCite(object):
 
         self.set_str_ids = pack['set_wos_ids']
         self.id_cited_by = pack['id_cited_by']
+        self.str_to_int_map = pack['maps']['s2i']
         if not self.economical_mode:
             self.int_to_str_map = pack['maps']['i2s']
-        self.str_to_int_map = pack['maps']['s2i']
         self.id_date = pack['id_date']
         self.loaded = True
+        gc.collect()
 
     def dump(self, fpath, economical_mode=True):
         self.economical_mode = economical_mode

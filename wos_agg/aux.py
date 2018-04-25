@@ -6,7 +6,7 @@ from shutil import copyfileobj
 from os import listdir, rename, sysconf
 from os.path import isfile, join
 from pandas import DataFrame
-from numpy import vstack
+from numpy import vstack, cumsum, argmin, argmax
 from .chunkreader import ChunkReader
 from .accumulator import Accumulator, AccumulatorOrgs, AccumulatorCite
 from graph_tools.ef import calc_eigen_vec
@@ -235,7 +235,12 @@ def main_merge(sourcepath, destpath, n_processes=2, gb_size_limit=20):
     logging.info(' main_acs() : files list: {0}'.format(files))
 
     while len(files) > 1:
-        bnd = min(len(files), 2*n_processes)//2
+        expected_mem_occupation = [s for _, s in files]
+        cs_extp_mem = cumsum(expected_mem_occupation)
+        best_ind = argmax((cs_extp_mem - 0.2*mem_gib) > 0)
+        n_proc_adj = int(best_ind//2)
+        n_proc = min(n_processes, n_proc_adj)
+        bnd = min(len(files), 2*n_proc_adj)//2
         fname_merge, fname_untouched = files[:2*bnd], files[2*bnd:]
         logging.info('main_merge() : len acs to merge : {0} leftover len : {1}'.format(len(fname_merge),
                                                                                        len(fname_untouched)))
@@ -245,9 +250,6 @@ def main_merge(sourcepath, destpath, n_processes=2, gb_size_limit=20):
                          + suffix) for fa, fb in fname_pairs]
         func = partial(merge_acs)
 
-        expected_mem_occupation = sum([s for _, s in fname_merge])
-        n_proc_adj = int(n_processes * mem_gib * 0.3 / expected_mem_occupation)
-        n_proc = min(n_processes, n_proc_adj)
         with mp.Pool(n_proc) as p:
             fname_merge = p.map(func, fname_triplet)
         files = fname_merge + fname_untouched
@@ -257,14 +259,16 @@ def main_merge(sourcepath, destpath, n_processes=2, gb_size_limit=20):
         gc.collect()
 
     big_files += files
-    logging.info(' main_merge() : number of big files {0}; list big files {1}'.format(len(files), files))
-    logging.info(' main_merge() : commencing one by one'.format(files))
+    logging.info(' main_merge() : number of big files {0}; list big files {1}'.format(len(big_files), big_files))
+    logging.info(' main_merge() : commencing one by one merge')
 
     if len(big_files) > 1:
         f_starter = big_files.pop(0)
         a = AccumulatorCite(f_starter[0])
         b = AccumulatorCite()
         a.load()
+        size_a = asizeof(a) / 1024 ** 3
+        logging.info(' main_merge() : {0} a size {1:.1f} Gb'.format(a.fname, size_a))
         while big_files:
             f_current = big_files.pop(0)
             b.load(f_current[0])
@@ -274,9 +278,9 @@ def main_merge(sourcepath, destpath, n_processes=2, gb_size_limit=20):
             size_new = asizeof(a) / 1024 ** 3
             logging.info(' main_merge() : merged file size {0:.1f} Gb'.format(size_new))
         a.dump(join(destpath, 'all_cite_pack.pgz'))
-        logging.info(' main_merge() : {0} {1}'.format(files[0][0], files[0][1]))
     else:
         rename(big_files[0][0], join(destpath, 'all_cite_pack.pgz'))
+    logging.info(' main_merge() : success')
 
 
 def merge_acs(fname_triplet):
