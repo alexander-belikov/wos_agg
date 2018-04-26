@@ -231,16 +231,18 @@ def main_merge(sourcepath, destpath, n_processes=2, gb_size_limit=20):
                     (f[-suffix_len:] == suffix and f[:prefix_len] == prefix)])
 
     big_files = []
-    files = [(join(fpath, f), 10) for f in files]
+    files = [(join(fpath, f), 5) for f in files]
     logging.info(' main_acs() : files list: {0}'.format(files))
 
     while len(files) > 1:
         expected_mem_occupation = [s for _, s in files]
         cs_extp_mem = cumsum(expected_mem_occupation)
-        best_ind = argmax((cs_extp_mem - 0.2*mem_gib) > 0)
+        best_ind = argmax((cs_extp_mem - 0.3*mem_gib) > 0) - 1
         n_proc_adj = int(best_ind//2)
         n_proc = min(n_processes, n_proc_adj)
-        bnd = min(len(files), 2*n_proc_adj)//2
+        logging.info(' main_merge() : number of processes {0}'.format(n_proc))
+
+        bnd = min(len(files), 2*n_proc)//2
         fname_merge, fname_untouched = files[:2*bnd], files[2*bnd:]
         logging.info('main_merge() : len acs to merge : {0} leftover len : {1}'.format(len(fname_merge),
                                                                                        len(fname_untouched)))
