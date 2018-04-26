@@ -232,14 +232,18 @@ def main_merge(sourcepath, destpath, n_processes=2, gb_size_limit=20):
 
     big_files = []
     files = [(join(fpath, f), 5) for f in files]
-    logging.info(' main_acs() : files list: {0}'.format(files))
+    logging.info(' main_merge() : files list: {0}'.format(files))
 
     while len(files) > 1:
         expected_mem_occupation = [s for _, s in files]
+        logging.info(' main_merge() : expected mem occ. {0}'.format(expected_mem_occupation))
         cs_extp_mem = cumsum(expected_mem_occupation)
-        best_ind = argmax((cs_extp_mem - 0.3*mem_gib) > 0) - 1
+        logging.info(' main_merge() : expected mem occ. {0}'.format(cs_extp_mem))
+        best_ind = max(argmax((cs_extp_mem - 0.3*mem_gib) > 0) - 1, 2)
         n_proc_adj = int(best_ind//2)
         n_proc = min(n_processes, n_proc_adj)
+        logging.info(' main_merge() : best_ind: {0}, n_proc_adj: {1}, n_porc: {2}'.format(best_ind, n_proc_adj, n_proc))
+
         logging.info(' main_merge() : number of processes {0}'.format(n_proc))
 
         bnd = min(len(files), 2*n_proc)//2
