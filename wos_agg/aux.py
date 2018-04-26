@@ -225,13 +225,13 @@ def main_merge(sourcepath, destpath, n_processes=2, gb_size_limit=20):
     prefix_len = len(prefix)
     fpath = sourcepath
     mem_bytes = sysconf('SC_PAGE_SIZE') * sysconf('SC_PHYS_PAGES')  # e.g. 4015976448
-    mem_gib = mem_bytes / 1024 ** 3
+    mem_gib = mem_bytes / 1024**3
 
     files = sorted([f for f in listdir(fpath) if isfile(join(fpath, f)) and
                     (f[-suffix_len:] == suffix and f[:prefix_len] == prefix)])
 
     big_files = []
-    files = [(join(fpath, f), 5) for f in files]
+    files = [(join(fpath, f), 5.) for f in files]
     logging.info(' main_merge() : physical mem {0}'.format(mem_gib))
 
     logging.info(' main_merge() : files list: {0}'.format(files))
@@ -241,7 +241,12 @@ def main_merge(sourcepath, destpath, n_processes=2, gb_size_limit=20):
         logging.info(' main_merge() : expected mem occ. {0}'.format(expected_mem_occupation))
         cs_extp_mem = cumsum(expected_mem_occupation)
         logging.info(' main_merge() : expected mem occ. {0}'.format(cs_extp_mem))
-        best_ind = max(argmax((cs_extp_mem - 0.3*mem_gib) > 0) - 1, 2)
+        best_ind = argmax((cs_extp_mem - 0.3 * mem_gib) > 0) - 1
+        if best_ind == -1:
+            best_ind = len(files)
+        elif best_ind < 2:
+            break
+        best_ind = max(best_ind, 2)
         n_proc_adj = int(best_ind//2)
         n_proc = min(n_processes, n_proc_adj)
         logging.info(' main_merge() : best_ind: {0}, n_proc_adj: {1}, n_porc: {2}'.format(best_ind, n_proc_adj, n_proc))
