@@ -232,6 +232,8 @@ def main_merge(sourcepath, destpath, n_processes=2, gb_size_limit=20):
 
     big_files = []
     files = [(join(fpath, f), 5) for f in files]
+    logging.info(' main_merge() : physical mem {0}'.format(mem_gib))
+
     logging.info(' main_merge() : files list: {0}'.format(files))
 
     while len(files) > 1:
