@@ -4,6 +4,7 @@ from networkx import Graph, to_pandas_adjacency, from_pandas_adjacency
 from graph_tools.reduction import update_edges, describe_graph, project_graph_return_adj
 from graph_tools.adj_aux import create_adj_matrix
 import logging
+from pympler.asizeof import asizeof
 from numpy import dot, arange, array
 from gc import collect
 import gzip
@@ -12,6 +13,14 @@ import gc
 
 id_type = 'id'
 prop_type = 'prop'
+
+
+def is_bstr(x):
+    try:
+        x.encode('latin-1')
+    except:
+        return True
+    return False
 
 
 #TODO introduce obvious inheritance
@@ -303,17 +312,23 @@ class AccumulatorCite(object):
         self.fname = fname
 
     def info(self):
-        logging.info('AccumulatorCite.info() : size of set {0} is {1}'.format(len(self.set_str_ids)))
+        logging.info(' AccumulatorCite.info() : obj {0}'.format(self.fname, len(self.str_to_int_map)))
+        logging.info(' AccumulatorCite.info() : number of entries {0} or {1:.1f}M'.format(len(self.str_to_int_map),
+                                                                                          len(self.str_to_int_map)/1e6))
+        s = sum([len(v) for v in self.id_cited_by.values()])
+        logging.info(' AccumulatorCite.info() : number of citations {0} or {1:.1f}M'.format(s, s/1e6))
+        size_a = asizeof(self) / 1024 ** 3
+        logging.info(' AccumulatorCite.info() : memsize {0:.2f} Gb'.format(size_a))
 
     def update_set_map(self, new_items):
-        outstanding = list(set(new_items) - self.set_str_ids)
+        outstanding = [k for k in new_items if k not in self.str_to_int_map.keys()]
         if outstanding:
-            n = len(self.set_str_ids)
-            self.set_str_ids.update(outstanding)
+            n = len(self.str_to_int_map)
             outstanding_ints = list(range(n, n + len(outstanding)))
             str_to_int_outstanding = dict(zip(outstanding, outstanding_ints))
             self.str_to_int_map.update(str_to_int_outstanding)
             if not self.economical_mode:
+                self.set_str_ids.update(outstanding)
                 int_to_str_outstanding = dict(zip(outstanding_ints, outstanding))
                 self.int_to_str_map.update(int_to_str_outstanding)
         gc.collect()
@@ -323,12 +338,12 @@ class AccumulatorCite(object):
             self.update_set_map(items)
         items_int = [self.str_to_int_map[s] for s in items]
         if priority:
-            # update inconditionally
+            # update unconditionally
             # it is implied that item_dates contains triplets of year, month, day
             oustanding_data_dict = dict(zip(items_int, item_dates))
         else:
             # update only if id in not in
-            outstanding = set(items_int) - set(self.id_date.keys())
+            outstanding = [k for k in items_int if k not in self.id_date.keys()]
             oustanding_data_dict = dict([(item, date) for item, date
                                          in zip(items_int, item_dates) if item in outstanding])
         self.id_date.update(oustanding_data_dict)
@@ -347,44 +362,52 @@ class AccumulatorCite(object):
             id_int = self.str_to_int_map[i_str]
             refs_int = [self.str_to_int_map[j] for j, y in refs]
 
-            if verbose:
-                print(id_int, refs_int)
-            refs_new = [j for j in refs_int if j not in self.id_cited_by.keys()]
-            if verbose:
-                print(refs_new)
-            update_dict = dict(zip(refs_new, [{id_int}]*len(refs_new)))
-            refs_existing = [j for j in refs_int if j in self.id_cited_by.keys()]
-            update_dict_existing = {j: self.id_cited_by[j] | {id_int} for j in refs_existing}
-            self.id_cited_by.update(update_dict)
-            self.id_cited_by.update(update_dict_existing)
+            for r in refs_int:
+                if r in self.id_cited_by:
+                    self.id_cited_by[r] += [id_int]
+                else:
+                    self.id_cited_by[r] = [id_int]
+
         gc.collect()
 
     def _update_citations(self, cdict):
-        update_dict = {k: (self.id_cited_by[k] | cdict[k]) if k in self.id_cited_by.keys()
-                       else cdict[k] for k, v in cdict.items()}
-        self.id_cited_by.update(update_dict)
+
+        for k, v in cdict.items():
+            if k in self.id_cited_by.keys():
+                cdict[k] += self.id_cited_by[k]
+        self.id_cited_by.update(cdict)
         gc.collect()
 
     def _update_dates(self, date_dict):
-        update_keys = set([k for k, d in date_dict.items() if d[1] and d[2]])
-        full_date_present = set([k for k, d in self.id_date.items() if d[1] and d[2]])
-        update_keys2 = (set(date_dict.keys()) - update_keys) - full_date_present
-        update_dict = {k: date_dict[k] for k in list(update_keys2)}
-        self.id_date.update(update_dict)
+        for k in list(date_dict.keys()):
+            if k in self.id_date.keys() and not (date_dict[k][1] and date_dict[k][2]):
+                del date_dict[k]
+        self.id_date.update(date_dict)
         gc.collect()
 
-    def load(self, fpath=None, economical_mode=True):
+    def load(self, fpath=None, economical_mode=True, str_to_byte=True, strip_prefix='WOS:'):
         self.economical_mode = economical_mode
         if fpath:
             self.fname = fpath
         with gzip.open(self.fname, 'rb') as fp:
             pack = pickle.load(fp)
 
-        self.set_str_ids = pack['set_wos_ids']
         self.id_cited_by = pack['id_cited_by']
-        self.str_to_int_map = pack['maps']['s2i']
+        self.id_cited_by = {k: list(v) for k, v in self.id_cited_by.items()}
+        pp = pack['maps']['s2i']
+        if strip_prefix:
+            lenp = len(strip_prefix)
+            pp = {k[lenp:] if k[:lenp] == strip_prefix else k: v for k, v in pp.items()}
+
+        first_key = next(iter(pp.keys()))
+        if str_to_byte and not(is_bstr(pp[first_key])):
+            pp = {k.encode('latin-1'): v for k, v in pp.items()}
+
+        self.str_to_int_map = pp
+
         if not self.economical_mode:
             self.int_to_str_map = pack['maps']['i2s']
+            self.set_str_ids = pack['set_wos_ids']
         self.id_date = pack['id_date']
         self.loaded = True
         gc.collect()
@@ -392,7 +415,9 @@ class AccumulatorCite(object):
     def dump(self, fpath, economical_mode=True):
         self.economical_mode = economical_mode
 
-        output = {'set_wos_ids': self.set_str_ids,
+        self.id_cited_by = {k: set(v) for k, v in self.id_cited_by.items()}
+
+        output = {
                   'maps': {'s2i': self.str_to_int_map},
                   'id_cited_by': self.id_cited_by,
                   'id_date': self.id_date
@@ -400,6 +425,7 @@ class AccumulatorCite(object):
 
         if not self.economical_mode:
             output['maps']['i2s'] = self.int_to_str_map
+            output['set_wos_ids'] = self.set_str_ids
 
         with gzip.open(fpath, 'wb') as fp:
             pickle.dump(output, fp)
@@ -412,17 +438,21 @@ class AccumulatorCite(object):
         gc.collect()
 
     def update_with_cite_data(self, cite_data):
+
         id_data = [x for x, y in cite_data]
+        self.update_set_map(id_data)
+        del id_data
+
         # lists of refs (id_str, y)
-        ref_id_year_ss = [item[1] for item in cite_data]
-        ref_tuples_flat = [item for sublist in ref_id_year_ss for item in sublist]
-        ref_ids = [x for x, y in ref_tuples_flat]
-        # ref_ids = [ref_id for sublist in ref_id_year_ss for ref_id, y in sublist]
-        self.update_set_map(id_data + ref_ids)
+        for wid, item in cite_data:
+            wids = [x for x, y in item]
+            self.update_set_map(wids)
+            ref_dates = [(y, None, None) for x, y in item]
+            self.update_dates(wids, ref_dates, False, False)
+            del wids
+            del ref_dates
 
         # flat list of refs
-        ref_dates = [(y, None, None) for x, y in ref_tuples_flat]
-        self.update_dates(ref_ids, ref_dates, False, False)
         self.update_citations(cite_data, False)
         gc.collect()
 
@@ -436,7 +466,8 @@ class AccumulatorCite(object):
         # if isinstance(b, AccumulatorCite):
         # a <= a, b
         a = self
-        wids_new = b.set_str_ids - a.set_str_ids
+
+        wids_new = [k for k in b.str_to_int_map.keys() if k not in a.str_to_int_map.keys()]
         a.update_set_map(wids_new)
 
         int_ids_b = list(b.str_to_int_map.values())
@@ -445,8 +476,9 @@ class AccumulatorCite(object):
 
         int_int_map_ba = {ib: a.str_to_int_map[b.int_to_str_map[ib]] for ib in int_ids_b}
 
-        id_cited_by_conv = {int_int_map_ba[k]: set([int_int_map_ba[x] for x in list(v)])
+        id_cited_by_conv = {int_int_map_ba[k]: [int_int_map_ba[x] for x in list(v)]
                             for k, v in b.id_cited_by.items()}
+
         a._update_citations(id_cited_by_conv)
 
         id_date_conv = {int_int_map_ba[k]: d for k, d in b.id_date.items()}

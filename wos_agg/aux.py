@@ -14,6 +14,7 @@ from graph_tools.ef import calc_eigen_vec
 import multiprocessing as mp
 from re import findall
 from functools import partial
+from psutil import virtual_memory
 import gc
 
 log_levels = {
@@ -224,8 +225,8 @@ def main_merge(sourcepath, destpath, n_processes=2, gb_size_limit=20):
     prefix = 'cite_pack'
     prefix_len = len(prefix)
     fpath = sourcepath
-    mem_bytes = sysconf('SC_PAGE_SIZE') * sysconf('SC_PHYS_PAGES')  # e.g. 4015976448
-    mem_gib = mem_bytes / 1024**3
+
+    mem_gib = virtual_memory().total / 1024**3
 
     files = sorted([f for f in listdir(fpath) if isfile(join(fpath, f)) and
                     (f[-suffix_len:] == suffix and f[:prefix_len] == prefix)])
@@ -240,8 +241,8 @@ def main_merge(sourcepath, destpath, n_processes=2, gb_size_limit=20):
         expected_mem_occupation = [s for _, s in files]
         logging.info(' main_merge() : expected mem occ. {0}'.format(expected_mem_occupation))
         cs_extp_mem = cumsum(expected_mem_occupation)
-        logging.info(' main_merge() : expected mem occ. {0}'.format(cs_extp_mem))
-        best_ind = argmax((cs_extp_mem - 0.3 * mem_gib) > 0) - 1
+        logging.info(' main_merge() : expected mem occ. cumsum : {0}'.format(cs_extp_mem))
+        best_ind = argmax((cs_extp_mem - 0.5 * mem_gib) > 0) - 1
         if best_ind == -1:
             best_ind = len(files)
         elif best_ind < 2:
@@ -253,9 +254,9 @@ def main_merge(sourcepath, destpath, n_processes=2, gb_size_limit=20):
 
         logging.info(' main_merge() : number of processes {0}'.format(n_proc))
 
-        bnd = min(len(files), 2*n_proc)//2
+        bnd = min(len(files), 2*n_proc) // 2
         fname_merge, fname_untouched = files[:2*bnd], files[2*bnd:]
-        logging.info('main_merge() : len acs to merge : {0} leftover len : {1}'.format(len(fname_merge),
+        logging.info('main_merge() : len acs to merge : {0}; leftover len : {1}'.format(len(fname_merge),
                                                                                        len(fname_untouched)))
         fname_pairs = zip(fname_merge[::2], fname_merge[1::2])
         fname_triplet = [(fa, fb,
@@ -279,33 +280,37 @@ def main_merge(sourcepath, destpath, n_processes=2, gb_size_limit=20):
         f_starter = big_files.pop(0)
         a = AccumulatorCite(f_starter[0])
         b = AccumulatorCite()
-        a.load()
+        a.load(str_to_byte=False)
         size_a = asizeof(a) / 1024 ** 3
         logging.info(' main_merge() : {0} a size {1:.1f} Gb'.format(a.fname, size_a))
         while big_files:
             f_current = big_files.pop(0)
-            b.load(f_current[0])
+            b.load(f_current[0], str_to_byte=False)
             size_b = asizeof(b) / 1024 ** 3
             logging.info(' main_merge() : {0} b size {1:.1f} Gb'.format(b.fname, size_b))
             a.merge(b)
             size_new = asizeof(a) / 1024 ** 3
             logging.info(' main_merge() : merged file size {0:.1f} Gb'.format(size_new))
+            fa = a.fname
+            fb = f_current[0]
+            a.fname = fa[0][:-ls] + findall(r'{0}(.*){1}'.format(prefix, suffix), fb[0])[0].lstrip('.') + suffix
+            a.dump(join(destpath, 'all_cite_pack.pgz'))
         a.dump(join(destpath, 'all_cite_pack.pgz'))
     else:
         rename(big_files[0][0], join(destpath, 'all_cite_pack.pgz'))
     logging.info(' main_merge() : success')
 
 
-def merge_acs(fname_triplet):
+def merge_acs(fname_triplet, str_to_byte=False):
     fa_full, fb_full, fnew = fname_triplet
     fa, _ = fa_full
     fb, _ = fb_full
     a = AccumulatorCite(fa)
     b = AccumulatorCite(fb)
-    a.load()
+    a.load(str_to_byte)
     size_a = asizeof(a) / 1024 ** 3
     logging.info(' main_acs() : {0} a size {1:.1f} Gb'.format(a.fname, size_a))
-    b.load()
+    b.load(str_to_byte)
     size_b = asizeof(b) / 1024 ** 3
     logging.info(' main_acs() : {0} b size {1:.1f} Gb'.format(b.fname, size_b))
     a.merge(b)
