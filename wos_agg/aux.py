@@ -293,7 +293,7 @@ def main_merge(sourcepath, destpath, n_processes=2, gb_size_limit=20):
             logging.info(' main_merge() : merged file size {0:.1f} Gb'.format(size_new))
             fa = a.fname
             fb = f_current[0]
-            a.fname = fa[0][:-ls] + findall(r'{0}(.*){1}'.format(prefix, suffix), fb[0])[0].lstrip('.') + suffix
+            a.fname = fa[:-ls] + findall(r'{0}(.*){1}'.format(prefix, suffix), fb)[0].lstrip('.') + suffix
             a.dump(join(destpath, 'all_cite_pack.pgz'))
         a.dump(join(destpath, 'all_cite_pack.pgz'))
     else:
