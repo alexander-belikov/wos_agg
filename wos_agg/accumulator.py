@@ -311,13 +311,14 @@ class AccumulatorCite(object):
         self.loaded = False
         self.fname = fname
 
-    def info(self):
+    def info(self, size_a=None):
         logging.info(' AccumulatorCite.info() : obj {0}'.format(self.fname, len(self.str_to_int_map)))
         logging.info(' AccumulatorCite.info() : number of entries {0} or {1:.1f}M'.format(len(self.str_to_int_map),
                                                                                           len(self.str_to_int_map)/1e6))
         s = sum([len(v) for v in self.id_cited_by.values()])
         logging.info(' AccumulatorCite.info() : number of citations {0} or {1:.1f}M'.format(s, s/1e6))
-        size_a = asizeof(self) / 1024 ** 3
+        if not size_a:
+            size_a = asizeof(self) / 1024 ** 3
         logging.info(' AccumulatorCite.info() : memsize {0:.2f} Gb'.format(size_a))
 
     def update_set_map(self, new_items):

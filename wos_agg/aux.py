@@ -314,8 +314,9 @@ def merge_acs(fname_triplet, str_to_byte=False):
     size_b = asizeof(b) / 1024 ** 3
     logging.info(' main_acs() : {0} b size {1:.1f} Gb'.format(b.fname, size_b))
     a.merge(b)
+    a.fname = fnew
     size_new = asizeof(a) / 1024 ** 3
-    logging.info(' main_acs() : merged and b size {0:.1f} Gb'.format(size_new))
+    a.info(size_new)
     del b
     a.dump(fnew)
     del a
