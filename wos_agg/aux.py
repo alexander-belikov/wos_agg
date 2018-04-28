@@ -242,7 +242,7 @@ def main_merge(sourcepath, destpath, n_processes=2, gb_size_limit=20):
         logging.info(' main_merge() : expected mem occ. {0}'.format(expected_mem_occupation))
         cs_extp_mem = cumsum(expected_mem_occupation)
         logging.info(' main_merge() : expected mem occ. cumsum : {0}'.format(cs_extp_mem))
-        best_ind = argmax((cs_extp_mem - 0.5 * mem_gib) > 0) - 1
+        best_ind = argmax((cs_extp_mem - 0.4 * mem_gib) > 0) - 1
         if best_ind == -1:
             best_ind = len(files)
         elif best_ind < 2:
