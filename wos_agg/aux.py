@@ -342,6 +342,6 @@ def main_retrieve_cite_data(source_path, dest_path,
     wids_ = [k[lenp:] if k[:lenp] == strip_prefix else k for k in wids]
     if verbose:
         logging.info('Len of wos id list: {0}, some wosids {1}'.format(len(wids_), wids[:5]))
-    a.retrieve_crosssection(wids_, join(dest_path, out_file_name))
+    a.retrieve_crosssection(wids_, join(dest_path, out_file_name), verbose=True)
 
 
