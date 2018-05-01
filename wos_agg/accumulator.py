@@ -488,3 +488,18 @@ class AccumulatorCite(object):
 
         return self
 
+    def retrieve_crosssection(self, wids, fout, verbose=False):
+        str_to_int = {k: self.str_to_int_map[k] for k in wids if k in self.str_to_int_map.keys()}
+        cites = {i: self.id_cited_by[i] for i in str_to_int.values()}
+        dates = {i: self.id_date[i] for i in str_to_int.values()}
+        if verbose:
+            logging.info('len of cites {0}'.format(len(cites)))
+
+        output = {
+                  's2i': str_to_int,
+                  'id_cited_by': cites,
+                  'id_date': dates
+                  }
+
+        with gzip.open(fout, 'wb') as fp:
+            pickle.dump(output, fp)

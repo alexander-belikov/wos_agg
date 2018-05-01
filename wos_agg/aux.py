@@ -14,6 +14,7 @@ from graph_tools.ef import calc_eigen_vec
 import multiprocessing as mp
 from re import findall
 from functools import partial
+from pandas import read_csv
 from psutil import virtual_memory
 import gc
 
@@ -215,8 +216,11 @@ def main_citations(sourcepath, destpath):
 
 def main_merge(sourcepath, destpath, n_processes=2, gb_size_limit=20):
     """
+
     :param sourcepath:
     :param destpath:
+    :param n_processes:
+    :param gb_size_limit:
     :return:
     """
     suffix = 'pgz'
@@ -322,3 +326,19 @@ def merge_acs(fname_triplet, str_to_byte=False):
     del a
     gc.collect()
     return fnew, size_new
+
+
+def main_retrieve_cite_data(source_path, dest_path,
+                            cites_fname='all_cite_pack.pgz',
+                            wids_fname='wosids.csv.gz',
+                            out_file_name='cites_cs.pgz'):
+    strip_prefix = 'WOS:'
+    lenp = len(strip_prefix)
+    a = AccumulatorCite(join(source_path, cites_fname))
+    a.load()
+    dfw = read_csv(join(source_path, wids_fname), compression='gzip', index_col=0)
+    wids = list(dfw['wos_id'].values)
+    wids_ = [k[lenp:] if k[:lenp] == strip_prefix else k for k in wids]
+    a.retrieve_crosssection(wids_, join(dest_path, out_file_name))
+
+
