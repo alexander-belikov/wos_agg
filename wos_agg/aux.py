@@ -331,7 +331,8 @@ def merge_acs(fname_triplet, str_to_byte=False):
 def main_retrieve_cite_data(source_path, dest_path,
                             cites_fname='all_cite_pack.pgz',
                             wids_fname='wosids.csv.gz',
-                            out_file_name='cites_cs.pgz'):
+                            out_file_name='cites_cs.pgz',
+                            verbose=True):
     strip_prefix = 'WOS:'
     lenp = len(strip_prefix)
     a = AccumulatorCite(join(source_path, cites_fname))
@@ -339,6 +340,8 @@ def main_retrieve_cite_data(source_path, dest_path,
     dfw = read_csv(join(source_path, wids_fname), compression='gzip', index_col=0)
     wids = list(dfw['wos_id'].values)
     wids_ = [k[lenp:] if k[:lenp] == strip_prefix else k for k in wids]
+    if verbose:
+        logging.info('Len of wos id list: {0}, some wosids {1}'.format(len(wids_), wids[:5]))
     a.retrieve_crosssection(wids_, join(dest_path, out_file_name))
 
 

@@ -375,8 +375,9 @@ class AccumulatorCite(object):
 
         for k, v in cdict.items():
             if k in self.id_cited_by.keys():
-                cdict[k] += self.id_cited_by[k]
-        self.id_cited_by.update(cdict)
+                self.id_cited_by[k] += cdict[k]
+            else:
+                self.id_cited_by[k] = cdict[k]
         gc.collect()
 
     def _update_dates(self, date_dict):
@@ -490,10 +491,41 @@ class AccumulatorCite(object):
 
     def retrieve_crosssection(self, wids, fout, verbose=False):
         str_to_int = {k: self.str_to_int_map[k] for k in wids if k in self.str_to_int_map.keys()}
-        cites = {i: self.id_cited_by[i] for i in str_to_int.values()}
-        dates = {i: self.id_date[i] for i in str_to_int.values()}
         if verbose:
+            logging.info('len of wids {0}'.format(len(wids)))
+            logging.info('some of wids {0}'.format(wids[:5]))
+            logging.info('len of str_to_int section {0}'.format(len(str_to_int)))
+            it = iter(str_to_int)
+            it_len = min(5, len(str_to_int))
+            items = [next(it) for k in range(it_len)]
+            logging.info('some of str_to_int section {0}'.format(items))
+        int_id_cites = [k for k in str_to_int.values() if k in self.id_cited_by.keys()]
+        if verbose:
+            logging.info('len of int_id_cites {0}'.format(len(int_id_cites)))
+            logging.info('we lost {0} items going from wosid_int map to cites'.format(len(str_to_int) - len(int_id_cites)))
+        cites = {i: self.id_cited_by[i] for i in int_id_cites}
+
+        if verbose:
+            it = iter(cites)
+            it_len = min(5, len(cites))
+            items = [next(it) for k in range(it_len)]
+            logging.info('some of cites section {0}'.format(items))
+
+        citing = [v for v in cites.values()]
+        citing_flat = list({x for sublist in citing for x in sublist} | set(int_id_cites))
+        citing_flat_present = [x for x in citing_flat if x in self.id_date.keys()]
+        if verbose:
+            logging.info('len of int_id_cites {0}'.format(len(citing_flat)))
+            logging.info('we lost {0} items going from cites to dates'.format(len(citing_flat) - len(citing_flat_present)))
             logging.info('len of cites {0}'.format(len(cites)))
+
+        dates = {i: self.id_date[i] for i in citing_flat_present}
+
+        if verbose:
+            it = iter(dates)
+            it_len = min(5, len(dates))
+            items = [next(it) for k in range(it_len)]
+            logging.info('some of dates section {0}'.format(items))
 
         output = {
                   's2i': str_to_int,
