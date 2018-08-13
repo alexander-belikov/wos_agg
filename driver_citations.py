@@ -32,6 +32,10 @@ if __name__ == "__main__":
                         default=20, type=float,
                         help='max size of intermediate pickle in Gb')
 
+    parser.add_argument('-w', '--widsfname',
+                        default='wosids.csv.gz', type=str,
+                        help='name of the wosids csv gz file')
+
     args = parser.parse_args()
 
     logging.basicConfig(filename=args.logfile, level=log_levels[args.verbosity],
@@ -55,7 +59,7 @@ if __name__ == "__main__":
     elif args.mode == 'merge':
         main_merge(args.sourcepath, args.destpath, args.nproc, args.max_gb_pickle)
     elif args.mode == 'retrieve':
-        main_retrieve_cite_data(args.sourcepath, args.destpath)
+        main_retrieve_cite_data(args.sourcepath, args.destpath, wids_fname=args.widsfname)
     else:
         logging.info('exiting driver_citations flow without action ...')
 
