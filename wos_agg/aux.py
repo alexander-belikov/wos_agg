@@ -377,6 +377,7 @@ def main_retrieve_cite_data_before_merge(source_path, dest_path,
     cs_agg = AccumulatorCite()
     for fa in files:
         a = AccumulatorCite(fa)
+        a.load()
         a.info()
         a_cs = AccumulatorCite()
         a_cs.load_from_dict(a.retrieve_crosssection(wids_))
