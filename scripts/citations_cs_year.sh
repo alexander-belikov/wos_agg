@@ -21,9 +21,9 @@ installs() {
         yes | sudo apt update
         yes | sudo apt install python3 python3-dev
         usname=`whoami`
-        pip3 install pip numpy nose h5py pandas
-        pip3 install pympler Distance psutil
-        python3 get-pip.py --force-reinstall
+        python3 -m pip install pip numpy nose h5py pandas pympler Distance psutil
+#        yes | sudo python3 -m pip uninstall pip
+#        yes | sudo apt install python3-pip --reinstall
     fi
 }
 
