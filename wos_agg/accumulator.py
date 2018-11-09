@@ -544,7 +544,7 @@ class AccumulatorCite(object):
             logging.info('len of cites {0}'.format(len(cites)))
 
         dates = {i: self.id_date[i] for i in citing_flat_present}
-        int_to_str = {v: k for k, v in self.str_to_int_map.items() if v in citing_flat or v in k in wids}
+        int_to_str = {v: k for k, v in self.str_to_int_map.items() if (v in citing_flat) or (k in wids)}
         if verbose:
             it = iter(dates)
             it_len = min(5, len(dates))
