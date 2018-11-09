@@ -391,30 +391,28 @@ class AccumulatorCite(object):
         self.economical_mode = economical_mode
         if fpath:
             self.fname = fpath
-            with gzip.open(self.fname, 'rb') as fp:
-                pack = pickle.load(fp)
+        with gzip.open(self.fname, 'rb') as fp:
+            pack = pickle.load(fp)
 
-            self.id_cited_by = pack['id_cited_by']
-            self.id_cited_by = {k: list(v) for k, v in self.id_cited_by.items()}
-            pp = pack['maps']['s2i']
-            if strip_prefix:
-                lenp = len(strip_prefix)
-                pp = {k[lenp:] if k[:lenp] == strip_prefix else k: v for k, v in pp.items()}
+        self.id_cited_by = pack['id_cited_by']
+        self.id_cited_by = {k: list(v) for k, v in self.id_cited_by.items()}
+        pp = pack['maps']['s2i']
+        if strip_prefix:
+            lenp = len(strip_prefix)
+            pp = {k[lenp:] if k[:lenp] == strip_prefix else k: v for k, v in pp.items()}
 
-            first_key = next(iter(pp.keys()))
-            if str_to_byte and not(is_bstr(pp[first_key])):
-                pp = {k.encode('latin-1'): v for k, v in pp.items()}
+        first_key = next(iter(pp.keys()))
+        if str_to_byte and not(is_bstr(pp[first_key])):
+            pp = {k.encode('latin-1'): v for k, v in pp.items()}
 
-            self.str_to_int_map = pp
+        self.str_to_int_map = pp
 
-            if not self.economical_mode:
-                self.int_to_str_map = pack['maps']['i2s']
-                self.set_str_ids = pack['set_wos_ids']
-            self.id_date = pack['id_date']
-            self.loaded = True
-            gc.collect()
-        else:
-            pass
+        if not self.economical_mode:
+            self.int_to_str_map = pack['maps']['i2s']
+            self.set_str_ids = pack['set_wos_ids']
+        self.id_date = pack['id_date']
+        self.loaded = True
+        gc.collect()
 
     def load_from_dict(self, pack):
         self.id_cited_by = pack['id_cited_by']
