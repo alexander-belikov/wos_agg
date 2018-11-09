@@ -1,6 +1,7 @@
 import argparse
 import logging
-from wos_agg.aux import main_citations, log_levels, main_merge, main_retrieve_cite_data
+from wos_agg.aux import main_citations, log_levels, main_merge
+from wos_agg.aux import main_retrieve_cite_data, main_retrieve_cite_data_before_merge
 import sys
 
 if __name__ == "__main__":
@@ -60,6 +61,8 @@ if __name__ == "__main__":
         main_merge(args.sourcepath, args.destpath, args.nproc, args.max_gb_pickle)
     elif args.mode == 'retrieve':
         main_retrieve_cite_data(args.sourcepath, args.destpath, wids_fname=args.widsfname)
+    elif args.mode == 'retrieve_cs_before_merge':
+        main_retrieve_cite_data_before_merge(args.sourcepath, args.destpath, wids_fname=args.widsfname)
     else:
         logging.info('exiting driver_citations flow without action ...')
 

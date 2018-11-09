@@ -345,3 +345,44 @@ def main_retrieve_cite_data(source_path, dest_path,
     a.retrieve_crosssection(wids_, join(dest_path, out_file_name), verbose=True)
 
 
+def main_retrieve_cite_data_before_merge(source_path, dest_path,
+                                         wids_fname='wosids.csv.gz',
+                                         out_file_name='cites_cs.pgz'):
+    """
+
+    :param source_path:
+    :param dest_path:
+    :param wids_fname:
+    :param out_file_name:
+    :return:
+    """
+    strip_prefix = 'WOS:'
+    lenp = len(strip_prefix)
+    dfw = read_csv(join(source_path, wids_fname), compression='gzip', index_col=0)
+    wids = list(dfw['wos_id'].values)
+    wids_ = [k[lenp:] if k[:lenp] == strip_prefix else k for k in wids]
+
+    suffix = 'pgz'
+    suffix_len = len(suffix)
+    prefix = 'cite_pack'
+    prefix_len = len(prefix)
+    fpath = source_path
+
+    files = sorted([f for f in listdir(fpath) if isfile(join(fpath, f)) and
+                    (f[-suffix_len:] == suffix and f[:prefix_len] == prefix)])
+
+    files = [join(fpath, f) for f in files]
+
+    logging.info(' main_retrieve_cite_data_before_merge() : files list: {0}'.format(files))
+    cs_agg = AccumulatorCite()
+    for fa in files:
+        a = AccumulatorCite(fa)
+        a_cs = AccumulatorCite()
+        a_cs.load_from_dict(a.retrieve_crosssection(wids_, save=False))
+        cs_agg.merge(a_cs)
+    cs_agg.dump(join(dest_path, out_file_name))
+
+    logging.info(' main_retrieve_cite_data_before_merge() : success')
+
+
+

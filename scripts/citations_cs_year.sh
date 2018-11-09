@@ -1,0 +1,76 @@
+#!/bin/bash
+
+unamestr=`uname`
+if [[ "$unamestr" == 'Linux' ]]; then
+python_=python3.6
+else python_=python
+fi
+
+installs() {
+    if [[ "$unamestr" == 'Linux' ]]; then
+        lsb_release -a
+        sudo rm /var/lib/apt/lists/lock
+        sudo rm /var/cache/apt/archives/lock
+        sudo rm /var/lib/dpkg/lock
+        apt-get update
+        sudo rm /var/lib/apt/lists/lock
+        sudo rm /var/cache/apt/archives/lock
+        sudo rm /var/lib/dpkg/lock
+        yes | sudo dpkg --configure -a
+        yes | sudo add-apt-repository ppa:jonathonf/python-3.6
+        yes | sudo apt update
+        yes | sudo apt install python3.6 python3.6-dev python-dev
+        usname=`whoami`
+        python3.6 -m pip install --upgrade pip numpy nose h5py pandas
+        python3.6 -m pip install pympler Distance psutil
+    fi
+}
+
+mode=$1
+package_name_agg=wos_agg
+data_path=../
+verb=INFO
+
+setup_data() {
+    tarfile=`ls *tar.gz`
+    echo "Found tar.gz files" $tarfile "of size" $(du -smh $tarfile | awk '{print $1}')
+    for tf in $tarfile; do
+        tar xf $tf
+    done
+}
+
+clone_repo() {
+echo "starting cloning $1"
+git clone https://github.com/alexander-belikov/$1.git
+echo "*** list files in "$1":"
+ls -lht ./$1
+echo "*** list files in "$1"/"$1 ":"
+ls -lht ./$1/$1
+cd ./$1
+echo "starting installing $1"
+$python_ ./setup.py install
+cd ..
+}
+
+exec_driver() {
+cd ./$1
+echo "starting exec_driver $1"
+echo $python_
+$python_ ./driver_citations.py -s $data_path -d $data_path -m $mode -v $verb
+cd ..
+}
+
+post_processing() {
+echo "*** all files sizes :"
+ls -thor *
+}
+
+# Install packages
+installs
+setup_data
+# Clone repos from gh
+clone_repo $package_name_agg
+# Execute the driver script
+exec_driver $package_name_agg
+# Prepare the results
+post_processing
