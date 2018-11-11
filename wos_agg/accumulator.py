@@ -299,7 +299,7 @@ class AccumulatorOrgs(object):
 
 
 class AccumulatorCite(object):
-    def __init__(self, fname=None, economical_mode=True):
+    def __init__(self, fname=None, economical_mode=True, verbose=False):
         self.set_str_ids = set()
         self.int_to_str_map = dict()
         self.str_to_int_map = dict()
@@ -310,6 +310,7 @@ class AccumulatorCite(object):
         self.economical_mode = economical_mode
         self.loaded = False
         self.fname = fname
+        self.verbose = verbose
 
     def info(self, size_a=None):
         logging.info(' AccumulatorCite.info() : obj {0}'.format(self.fname, len(self.str_to_int_map)))
@@ -323,11 +324,17 @@ class AccumulatorCite(object):
 
     def update_set_map(self, new_items):
         outstanding = [k for k in new_items if k not in self.str_to_int_map.keys()]
+        if self.verbose:
+            print('in update_set_map() outstading len: {0}'.format(len(outstanding)))
         if outstanding:
             n = len(self.str_to_int_map)
+            if self.verbose:
+                print('in update_set_map() self.str_to_int_map len: {0}'.format(n))
             outstanding_ints = list(range(n, n + len(outstanding)))
             str_to_int_outstanding = dict(zip(outstanding, outstanding_ints))
             self.str_to_int_map.update(str_to_int_outstanding)
+            if self.verbose:
+                print('in update_set_map() self.str_to_int_map len after update: {0}'.format(len(self.str_to_int_map)))
             if not self.economical_mode:
                 self.set_str_ids.update(outstanding)
                 int_to_str_outstanding = dict(zip(outstanding_ints, outstanding))
@@ -470,22 +477,32 @@ class AccumulatorCite(object):
     def merge(self, b):
         """
 
-        :param a: self
+        :param self: a
         :param b: AccumulatorCite obj that is merged onto a
-        :return:
+        :return: self
         """
         # if isinstance(b, AccumulatorCite):
         # a <= a, b
         a = self
 
         wids_new = [k for k in b.str_to_int_map.keys() if k not in a.str_to_int_map.keys()]
+
+        if self.verbose:
+            print('in merge() wids_new len: {0}'.format(len(wids_new)))
         a.update_set_map(wids_new)
 
         int_ids_b = list(b.str_to_int_map.values())
+
+        if self.verbose:
+            print('in merge() int_ids_b len: {0}'.format(len(int_ids_b)))
+
         if b.economical_mode:
             b.int_to_str_map = {k: v for v, k in b.str_to_int_map.items()}
 
         int_int_map_ba = {ib: a.str_to_int_map[b.int_to_str_map[ib]] for ib in int_ids_b}
+
+        if self.verbose:
+            print('in merge() int_int_map_ba len: {0}'.format(len(int_int_map_ba)))
 
         id_cited_by_conv = {int_int_map_ba[k]: [int_int_map_ba[x] for x in list(v)]
                             for k, v in b.id_cited_by.items()}
@@ -508,21 +525,21 @@ class AccumulatorCite(object):
         :return:
         """
         # s : i (wids) for wids, if present
-        str_to_int = {k: self.str_to_int_map[k] for k in wids if k in self.str_to_int_map.keys()}
+        wids_int = [self.str_to_int_map[k] for k in wids if k in self.str_to_int_map.keys()]
 
         if verbose:
             logging.info('len of wids {0}'.format(len(wids)))
             logging.info('some of wids {0}'.format(wids[:5]))
-            logging.info('len of str_to_int section {0}'.format(len(str_to_int)))
-            it = iter(str_to_int)
-            it_len = min(5, len(str_to_int))
+            logging.info('len of str_to_int section {0}'.format(len(wids_int)))
+            it = iter(wids_int)
+            it_len = min(5, len(wids_int))
             items = [next(it) for k in range(it_len)]
             logging.info('some of str_to_int section {0}'.format(items))
         # i (wids) for wids if i in cite dict
-        int_id_cites = [k for k in str_to_int.values() if k in self.id_cited_by.keys()]
+        int_id_cites = [k for k in wids_int if k in self.id_cited_by.keys()]
         if verbose:
             logging.info('len of int_id_cites {0}'.format(len(int_id_cites)))
-            logging.info('we lost {0} items going from wosid_int map to cites'.format(len(str_to_int) - len(int_id_cites)))
+            logging.info('we lost {0} items going from wosid_int map to cites'.format(len(wids_int) - len(int_id_cites)))
         # i: [ii] (wids) for
         cites = {i: self.id_cited_by[i] for i in int_id_cites}
 
@@ -544,7 +561,9 @@ class AccumulatorCite(object):
             logging.info('len of cites {0}'.format(len(cites)))
 
         dates = {i: self.id_date[i] for i in citing_flat_present}
-        int_to_str = {v: k for k, v in self.str_to_int_map.items() if (v in citing_flat) or (k in wids)}
+        str_to_int = {k: v for k, v in self.str_to_int_map.items() if (v in citing_flat) or (k in wids)}
+        int_to_str = {v: k for k, v in str_to_int.items()}
+
         if verbose:
             it = iter(dates)
             it_len = min(5, len(dates))

@@ -374,13 +374,14 @@ def main_retrieve_cite_data_before_merge(source_path, dest_path,
     files = [join(fpath, f) for f in files]
 
     logging.info(' main_retrieve_cite_data_before_merge() : files list: {0}'.format(files))
-    cs_agg = AccumulatorCite()
+    cs_agg = AccumulatorCite(verbose=True)
     for fa in files:
         a = AccumulatorCite(fa)
         a.load()
         a.info()
         a_cs = AccumulatorCite()
         a_cs.load_from_dict(a.retrieve_crosssection(wids_))
+        a_cs.info()
         cs_agg.merge(a_cs)
     cs_agg.info()
     cs_agg.dump(join(dest_path, out_file_name))
