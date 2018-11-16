@@ -313,7 +313,7 @@ class AccumulatorCite(object):
         self.verbose = verbose
 
     def info(self, size_a=None):
-        logging.info(' AccumulatorCite.info() : obj {0}'.format(self.fname, len(self.str_to_int_map)))
+        logging.info(' AccumulatorCite.info() : obj {0} {1}'.format(self.fname, len(self.str_to_int_map)))
         logging.info(' AccumulatorCite.info() : number of entries {0} or {1:.4f}M'.format(len(self.str_to_int_map),
                                                                                           len(self.str_to_int_map)/1e6))
         s = sum([len(v) for v in self.id_cited_by.values()])
@@ -327,7 +327,7 @@ class AccumulatorCite(object):
         if self.verbose:
             print('in update_set_map() outstading len: {0}'.format(len(outstanding)))
         if outstanding:
-            n = len(self.str_to_int_map)
+            n = max(self.str_to_int_map.values())
             if self.verbose:
                 print('in update_set_map() self.str_to_int_map len: {0}'.format(n))
             outstanding_ints = list(range(n, n + len(outstanding)))

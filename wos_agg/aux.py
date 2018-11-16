@@ -378,11 +378,15 @@ def main_retrieve_cite_data_before_merge(source_path, dest_path,
     for fa in files:
         a = AccumulatorCite(fa)
         a.load()
+        logging.info('a_info info')
         a.info()
         a_cs = AccumulatorCite()
         a_cs.load_from_dict(a.retrieve_crosssection(wids_))
+        logging.info('a_cs info')
         a_cs.info()
         cs_agg.merge(a_cs)
+        logging.info('cs_agg info')
+        cs_agg.info()
     cs_agg.info()
     cs_agg.dump(join(dest_path, out_file_name))
 
