@@ -299,13 +299,16 @@ class AccumulatorOrgs(object):
 
 
 def fill_gaps_sequence(sequence, size_2fill):
-    if min(sequence) >= 0:
-        len_new = size_2fill + len(sequence)
-        total = list(range(len_new))
-        new_inds = list(set(total) - set(sequence))
-        return new_inds
+    if sequence:
+        if min(sequence) >= 0:
+            len_new = size_2fill + len(sequence)
+            total = list(range(len_new))
+            new_inds = list(set(total) - set(sequence))
+            return new_inds
+        else:
+            raise ValueError('in fill_gaps_sequence() : negative indices in sequence...')
     else:
-        raise ValueError('Negative indices in sequence')
+        return list(range(size_2fill))
 
 
 class AccumulatorCite(object):
