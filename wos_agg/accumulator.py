@@ -298,6 +298,16 @@ class AccumulatorOrgs(object):
             pickle.dump(output, fp)
 
 
+def fill_gaps_sequence(sequence, size_2fill):
+    if min(sequence) >= 0:
+        len_new = size_2fill + len(sequence)
+        total = list(range(len_new))
+        new_inds = list(set(total) - set(sequence))
+        return new_inds
+    else:
+        raise ValueError('Negative indices in sequence')
+
+
 class AccumulatorCite(object):
     def __init__(self, fname=None, economical_mode=True, verbose=False):
         self.set_str_ids = set()
@@ -327,10 +337,7 @@ class AccumulatorCite(object):
         if self.verbose:
             print('in update_set_map() outstading len: {0}'.format(len(outstanding)))
         if outstanding:
-            n = max(self.str_to_int_map.values())
-            if self.verbose:
-                print('in update_set_map() self.str_to_int_map len: {0}'.format(n))
-            outstanding_ints = list(range(n, n + len(outstanding)))
+            outstanding_ints = fill_gaps_sequence(self.str_to_int_map.values(), len(outstanding))
             str_to_int_outstanding = dict(zip(outstanding, outstanding_ints))
             self.str_to_int_map.update(str_to_int_outstanding)
             if self.verbose:
